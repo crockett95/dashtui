@@ -1,3 +1,5 @@
+pub mod docset;
+
 pub fn sum_up_to(n: u32) -> u32 {
     let mut i = 0;
     let mut sum = 0;
