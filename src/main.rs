@@ -1,40 +1,79 @@
-use std::{env::args, path::Path, process};
+use clap::{Parser, Subcommand};
+use std::{path::PathBuf, process};
 
 use dashtui::docset::find_docsets;
-// `dashtui list <dir>` prints every `*.docset` directory found under `<dir>`,
-// one path per line, using `dashtui::docset::find_docsets`.
-//
-// Contract for this step (no `clap` yet):
-//   - `std::env::args()` yields the binary path first, then the real args —
-//     expect exactly two real args: the subcommand "list" and a directory.
-//   - On success, print each found path, one per line, to stdout.
-//   - On any failure (wrong/missing args, or `find_docsets` returning
-//     `Err`), print a message to stderr and exit with a non-zero status.
-//     (Look at `std::process::exit` for that last part.)
-fn main() {
-    let args: Vec<String> = args().collect();
-    let exe = args.first().unwrap();
-    match (args.get(1).map(String::as_str), args.get(2), args.get(3)) {
-        (None, _, _) => invalid_call(exe, "No command given"),
-        (Some(_), None, _) => invalid_call(exe, "No search path provided"),
-        (Some("list"), Some(search), None) => {
-            let search = Path::new(search);
-            find_docsets(search)
-                .unwrap_or_else(|e| {
-                    eprintln!("An error occured: {}", e);
-                    process::exit(1);
-                })
-                .iter()
-                .for_each(|path| {
-                    println!("{}", path.to_string_lossy());
-                });
-        }
-        (Some(_), Some(_), None) => invalid_call(exe, "Unknown command"),
-        (Some(_), Some(_), Some(_)) => invalid_call(exe, "Unexpected number of arguments"),
-    };
+use dashtui::json::DiscoveryView;
+
+#[derive(Debug, Parser)]
+/// dashtui: Dash docs for the terminal
+struct Cli {
+    #[command(subcommand)]
+    command: Command,
+
+    #[arg(long, global = true)]
+    json: bool,
 }
 
-fn invalid_call(exe: &str, err: &str) {
-    eprintln!("{}. Usage: {} list <path>", err, exe);
-    process::exit(1)
+#[derive(Subcommand, Debug, PartialEq, Eq)]
+enum Command {
+    /// List all docsets found in a directory
+    ///
+    /// Prints every `*.docset` directory found under `<dir>`,
+    /// one path per line, using `dashtui::docset::find_docsets`.
+    List {
+        /// Directory to search for docsets
+        root_dir: PathBuf,
+    },
+}
+
+fn fail(msg: &str, exit_code: i32) {
+    eprintln!("{}", msg);
+    process::exit(exit_code);
+}
+
+fn main() {
+    let cli = Cli::parse();
+
+    match cli.command {
+        Command::List { root_dir: search } => match find_docsets(&search) {
+            Ok(paths) => {
+                if cli.json {
+                    match serde_json::to_string(&DiscoveryView { docsets: paths }) {
+                        Ok(json) => {
+                            println!("{}", json)
+                        }
+                        Err(error) => fail(&format!("Serialization failed: {}", error), 1),
+                    }
+                } else {
+                    for path in paths.iter() {
+                        println!("{}", path.to_string_lossy());
+                    }
+                }
+            }
+            Err(e) => fail(&format!("an error occurred: {}", e), 1),
+        },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn list_subcommand_parsing() {
+        assert_eq!(
+            Cli::try_parse_from(["dashtui", "list", "some/dir"])
+                .expect("Test failed")
+                .command,
+            Command::List {
+                root_dir: PathBuf::from("some/dir")
+            }
+        )
+    }
+
+    #[test]
+    fn list_fails_if_no_dir() {
+        let result = Cli::try_parse_from(["dashtui", "list"]);
+        assert!(result.is_err());
+    }
 }
