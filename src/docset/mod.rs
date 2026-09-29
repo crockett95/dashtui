@@ -3,6 +3,17 @@ use std::io;
 use std::io::ErrorKind::{NotADirectory, NotFound};
 use std::path::{Path, PathBuf};
 
+use serde::Serialize;
+
+use crate::docset::meta::DocsetMeta;
+
+#[derive(Debug, PartialEq, Eq, Serialize)]
+pub struct Docset {
+    pub path: PathBuf,
+    #[serde(flatten)]
+    pub meta: Option<DocsetMeta>,
+}
+
 /// Searches `root` for docset directories: any directory whose name ends in
 /// `.docset`.
 ///
@@ -19,7 +30,7 @@ use std::path::{Path, PathBuf};
 /// a directory, or its contents can't be listed for another reason, e.g.
 /// permissions). Errors reading a *subdirectory* encountered during the walk
 /// are reported to stderr which is clunky but I don't know how to do better yet.
-pub fn find_docsets(root: &Path) -> io::Result<Vec<PathBuf>> {
+pub fn find_docsets(root: &Path) -> io::Result<Vec<Docset>> {
     if !root.exists() {
         return Err(io::Error::new(
             NotFound,
@@ -40,7 +51,21 @@ pub fn find_docsets(root: &Path) -> io::Result<Vec<PathBuf>> {
         match child {
             Ok(child) if child.file_type().unwrap().is_dir() => {
                 if child.path().extension().is_some_and(|ext| ext == "docset") {
-                    results.push(child.path());
+                    let meta = match DocsetMeta::load(&child.path()) {
+                        Ok(meta) => Some(meta),
+                        Err(err) => {
+                            eprintln!(
+                                "Error reading metadata for {}: {}",
+                                child.path().to_string_lossy(),
+                                err
+                            );
+                            None
+                        }
+                    };
+                    results.push(Docset {
+                        path: child.path(),
+                        meta,
+                    });
                 } else {
                     results.extend(find_docsets(&child.path())?);
                 }

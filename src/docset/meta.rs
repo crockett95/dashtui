@@ -2,17 +2,17 @@ use std::fs::File;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq, Eq, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct DocsetMeta {
-    #[serde(rename = "CFBundleIdentifier")]
+    #[serde(rename(deserialize = "CFBundleIdentifier"))]
     pub id: String,
-    #[serde(rename = "CFBundleName")]
+    #[serde(rename(deserialize = "CFBundleName"))]
     pub name: String,
-    #[serde(rename = "DocSetPlatformFamily")]
+    #[serde(rename(deserialize = "DocSetPlatformFamily"))]
     pub platform_family: String,
-    #[serde(rename = "dashIndexFilePath")]
+    #[serde(rename(deserialize = "dashIndexFilePath"))]
     pub index_file: Option<PathBuf>,
 }
 

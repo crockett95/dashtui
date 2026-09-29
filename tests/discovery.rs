@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use dashtui::docset::find_docsets;
+use dashtui::docset::{Docset, find_docsets};
 
 fn fixture(rel: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -11,8 +11,12 @@ fn fixture(rel: &str) -> PathBuf {
 #[test]
 fn finds_docsets_recursively() {
     let root = fixture("docsets_root");
-    let mut found = find_docsets(&root).unwrap();
-    found.sort();
+    let found = find_docsets(&root).unwrap();
+    let mut paths: Vec<PathBuf> = found
+        .iter()
+        .map(|d: &Docset| PathBuf::from(&d.path))
+        .collect();
+    paths.sort();
 
     let mut expected = vec![
         root.join("Bash.docset"),
@@ -21,7 +25,7 @@ fn finds_docsets_recursively() {
     ];
     expected.sort();
 
-    assert_eq!(found, expected);
+    assert_eq!(paths, expected);
 }
 
 #[test]
@@ -32,7 +36,10 @@ fn does_not_descend_into_a_found_docset() {
     let root = fixture("docsets_root");
     let found = find_docsets(&root).unwrap();
 
-    assert!(!found.contains(&root.join("Bash.docset/FakeNested.docset")));
+    assert!(!found.contains(&Docset {
+        path: root.join("Bash.docset/FakeNested.docset").to_owned(),
+        meta: None
+    }));
 }
 
 #[test]
