@@ -1,3 +1,4 @@
+pub mod entry;
 pub mod meta;
 use std::io;
 use std::io::ErrorKind::{NotADirectory, NotFound};
