@@ -3,16 +3,29 @@
 {
 	"name": "Rust",
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-	"image": "mcr.microsoft.com/devcontainers/rust:2-1-trixie"
+	"image": "mcr.microsoft.com/devcontainers/rust:2-1-trixie",
 
-	// Use 'mounts' to make the cargo cache persistent in a Docker Volume.
-	// "mounts": [
-	// 	{
-	// 		"source": "devcontainer-cargo-cache-${devcontainerId}",
-	// 		"target": "/usr/local/cargo",
-	// 		"type": "volume"
-	// 	}
-	// ]
+	// Persist these across a container rebuild. Without this, the whole
+	// home directory (Neovim config/plugins, rust-analyzer's index cache,
+	// Claude Code's own session data) and the cargo/rustup install dirs are
+	// wiped and recreated from the base image every time.
+	"mounts": [
+		{
+			"source": "devcontainer-home-${devcontainerId}",
+			"target": "/home/vscode",
+			"type": "volume"
+		},
+		{
+			"source": "devcontainer-cargo-cache-${devcontainerId}",
+			"target": "/usr/local/cargo",
+			"type": "volume"
+		},
+		{
+			"source": "devcontainer-rustup-${devcontainerId}",
+			"target": "/usr/local/rustup",
+			"type": "volume"
+		}
+	]
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
