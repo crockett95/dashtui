@@ -1,0 +1,13 @@
+[sqlfluff]
+# Docset indexes are SQLite databases.
+dialect = sqlite
+# Fixtures keep one INSERT per real row, and docset paths are long, so line
+# length isn't enforced. Identifier case is left as written because Dash's own
+# schema mixes cases (`searchIndex`, `id`, `ZTOKEN`) and SQLite ignores it.
+exclude_rules = capitalisation.identifiers
+
+[sqlfluff:rules:capitalisation.keywords]
+capitalisation_policy = upper
+
+[sqlfluff:rules:capitalisation.functions]
+extended_capitalisation_policy = lower
