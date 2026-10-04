@@ -1,0 +1,76 @@
+# `pre-commit install` sets up every stage listed here.
+default_install_hook_types: [pre-commit, commit-msg, pre-push]
+default_stages: [pre-commit]
+# Some upstream hooks also declare pre-push; they're pinned to pre-commit below.
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      # Fixtures are byte-exact test inputs (one is malformed on purpose), and
+      # LICENSE.md is verbatim legal text that uses trailing spaces as breaks.
+      - id: trailing-whitespace
+        stages: [pre-commit]
+        args: [--markdown-linebreak-ext=md]
+        exclude: ^(tests/fixtures/|LICENSE\.md$)
+      - id: end-of-file-fixer
+        stages: [pre-commit]
+        exclude: ^(tests/fixtures/|LICENSE\.md$)
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      # The workspace is mounted from a case-insensitive host filesystem.
+      - id: check-case-conflict
+      # Catches a docset or SQLite index slipping past .gitignore.
+      - id: check-added-large-files
+        stages: [pre-commit]
+
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.4.0
+    hooks:
+      - id: conventional-pre-commit
+
+  - repo: https://github.com/sqlfluff/sqlfluff
+    rev: 4.4.0
+    hooks:
+      - id: sqlfluff-lint
+
+  - repo: local
+    hooks:
+      - id: cargo-fmt
+        name: cargo fmt
+        entry: cargo fmt
+        language: system
+        types: [rust]
+        pass_filenames: false
+      - id: cargo-clippy
+        name: cargo clippy
+        entry: cargo clippy --all-targets -- -D warnings
+        language: system
+        types: [rust]
+        pass_filenames: false
+      - id: cargo-test-unit
+        name: cargo test (unit)
+        entry: cargo test --lib
+        language: system
+        types: [rust]
+        pass_filenames: false
+      # Fixups are fine locally but must be squashed before they leave. On a
+      # first push (root commit included) pre-commit sets no range, so this
+      # falls back to checking all of HEAD's history.
+      - id: no-unsquashed-fixups
+        name: no fixup!/squash!/amend! commits
+        language: system
+        entry: >-
+          bash -c 'range="${PRE_COMMIT_FROM_REF:+$PRE_COMMIT_FROM_REF..}${PRE_COMMIT_TO_REF:-HEAD}";
+          ! git log --format=%s "$range" | grep -E "^(fixup|squash|amend)! "'
+        always_run: true
+        pass_filenames: false
+        stages: [pre-push]
+      - id: cargo-test
+        name: cargo test (all)
+        entry: cargo test
+        language: system
+        types: [rust]
+        pass_filenames: false
+        stages: [pre-push]

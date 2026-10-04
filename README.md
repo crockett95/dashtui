@@ -58,6 +58,7 @@ The JSON output is a stable, tested interface for scripts and editor plugins
 ## Development
 
 ```sh
+pre-commit install           # fmt, clippy, unit tests on commit; all tests on push
 cargo test                   # needs no docsets; the tests use tests/fixtures/
 cargo fmt --check
 cargo clippy --all-targets
