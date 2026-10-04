@@ -1,5 +1,6 @@
 pub mod docset;
 pub mod json;
+pub mod stats;
 
 pub fn sum_up_to(n: u32) -> u32 {
     let mut i = 0;

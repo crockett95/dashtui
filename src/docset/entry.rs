@@ -4,7 +4,7 @@
 /// types . Different docset generators spell the same concept differently
 /// (`"func"` vs. `"Function"`), and a single docset can even mix several
 /// incompatible naming conventions in one file.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum EntryType {
     Builtin,
     Function,
@@ -63,6 +63,26 @@ pub enum EntryError {
     EmptyName,
     #[error("entry path is empty")]
     EmptyPath,
+}
+
+impl Entry {
+    /// Returns this entry's normalized type
+    pub fn kind(&self) -> &EntryType {
+        &self.kind
+    }
+
+    /// Builds a test fixture Entry with a specified type
+    ///
+    /// Builds a placeholder Entry fixture with a specified [`EntryType`] and
+    /// name "name" and path "path" as hardcoded values
+    #[cfg(test)]
+    pub fn fixture_with_kind(kind: EntryType) -> Self {
+        Self {
+            name: String::from("name"),
+            kind,
+            path: String::from("path"),
+        }
+    }
 }
 
 impl TryFrom<(&str, &str, &str)> for Entry {
