@@ -16,6 +16,35 @@ pub struct Docset {
     pub meta: Option<DocsetMeta>,
 }
 
+impl Docset {
+    /// Returns the path to the docset's index DB.
+    pub fn index_path(&self) -> PathBuf {
+        self.path.join("Contents/Resources/docSet.dsidx")
+    }
+
+    /// Creates a `Docset` from a [`PathBuf`]
+    ///
+    /// Given a path to a docset, constructs the `Docset` including reading its
+    /// metadata from the Info.plist if it exists and is valid according to
+    /// [`DocsetMeta::load`]. Invalid or nonexistant metadata results in
+    /// [`Docset::meta`] being [`None`]
+    pub fn load(path: PathBuf) -> Self {
+        let meta = match DocsetMeta::load(&path) {
+            Ok(meta) => Some(meta),
+            Err(err) => {
+                // TODO: Replace with real logging
+                eprintln!(
+                    "Error reading metadata for {}: {}",
+                    path.to_string_lossy(),
+                    err
+                );
+                None
+            }
+        };
+        Self { path, meta }
+    }
+}
+
 /// Searches `root` for docset directories: any directory whose name ends in
 /// `.docset`.
 ///
@@ -53,21 +82,7 @@ pub fn find_docsets(root: &Path) -> io::Result<Vec<Docset>> {
         match child {
             Ok(child) if child.file_type().unwrap().is_dir() => {
                 if child.path().extension().is_some_and(|ext| ext == "docset") {
-                    let meta = match DocsetMeta::load(&child.path()) {
-                        Ok(meta) => Some(meta),
-                        Err(err) => {
-                            eprintln!(
-                                "Error reading metadata for {}: {}",
-                                child.path().to_string_lossy(),
-                                err
-                            );
-                            None
-                        }
-                    };
-                    results.push(Docset {
-                        path: child.path(),
-                        meta,
-                    });
+                    results.push(Docset::load(child.path()));
                 } else {
                     results.extend(find_docsets(&child.path())?);
                 }
@@ -80,3 +95,27 @@ pub fn find_docsets(root: &Path) -> io::Result<Vec<Docset>> {
 }
 
 // See tests/discovery.rs for the tests against tests/fixtures/docsets_root/.
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn builds_index_path_from_docset_path() {
+        for (d, index) in [
+            ("/tmp/foo", "/tmp/foo/Contents/Resources/docSet.dsidx"),
+            (
+                "docsets/Bash.docset",
+                "docsets/Bash.docset/Contents/Resources/docSet.dsidx",
+            ),
+        ] {
+            let docset = Docset {
+                path: PathBuf::from(d),
+                meta: None,
+            };
+            let index_path = PathBuf::from(index);
+
+            assert_eq!(docset.index_path(), index_path, "case {d}: {index}")
+        }
+    }
+}
