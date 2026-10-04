@@ -11,9 +11,9 @@ back.
 > **Everything subject to change before v1**
 
 **NB**: _This is a project for me to learn
-[`Rust`](https://doc.rust-lang.org/book/) with an example that I like, so it's
-being done at my own leisurely pace. Feedback is welcome, but let me have my
-fun with it._
+[`Rust`](https://doc.rust-lang.org/book/) with a program I already wanted, so
+it's being done at my own leisurely pace. Feedback is welcome, but let me have
+my fun with it._
 
 ## Getting docsets
 
