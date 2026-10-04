@@ -17,7 +17,7 @@ pub fn shout(say: &str) -> String {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use super::*;
 
     #[test]

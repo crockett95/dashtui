@@ -110,7 +110,7 @@ impl TryFrom<(&str, &str, &str)> for Entry {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use super::*;
 
     #[test]

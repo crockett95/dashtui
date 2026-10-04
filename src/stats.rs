@@ -19,7 +19,7 @@ pub fn count_types(entries: &[Entry]) -> BTreeMap<EntryType, usize> {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use super::*;
 
     /// Check that all known types (as of the writing of this test) produce

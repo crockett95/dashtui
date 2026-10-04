@@ -8,7 +8,7 @@ pub struct DiscoveryView {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use std::path::PathBuf;
 
     use crate::{
