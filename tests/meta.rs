@@ -32,7 +32,8 @@ fn parses_every_field_when_present() {
 }
 
 /// `no_index_path.docset`'s Info.plist omits dashIndexFilePath, the one
-/// field PLAN.md decision 6 says is optional. Parsing should still succeed,
+/// field `DocsetMeta` treats as optional (absent in real docsets such as
+/// SQLite's). Parsing should still succeed,
 /// with that field coming back `None` rather than an error.
 #[test]
 fn missing_optional_field_becomes_none() {

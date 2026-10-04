@@ -4,16 +4,16 @@ There's no formal spec for a docset entry's `type` (schema A: `searchIndex.type`
 Core Data / schema B: `ZTOKENTYPE.ZTYPENAME`) — it's free text chosen by whatever
 generator built the docset (`dashing`, `doc2dash`, hand-rolled scripts...), with no
 `CHECK` constraint, foreign key, or lookup table backing it in either schema
-(verified via `sqlite3 .schema` against `docsets/`; see `PROGRESS.md`, M3). This page
+(verified via `sqlite3 .schema` against real docsets). This page
 collects what was learned empirically while designing `EntryType`
-(`src/docset/entry.rs`, decision 9 in `PLAN.md`), so it doesn't need re-deriving.
+(`src/docset/entry.rs`, ADR-7 in [adr.md](adr.md)), so it doesn't need re-deriving.
 
 **Compiled 2026-09-30.**
 
 ## What `EntryType` actually implements right now
 
-Scoped deliberately to only what the 3 real docsets in `docsets/` need — see decision
-9 in `PLAN.md` for why. Everything else below is reference material for extending it.
+Scoped deliberately to only what the 3 real docsets in `docsets/` need — see ADR-7
+in [adr.md](adr.md) for why. Everything else below is reference material for extending it.
 
 | Variant | Raw strings it matches |
 | --- | --- |
@@ -162,13 +162,13 @@ Full table (count per docset that uses that string), sorted by how many docsets 
   generator's own source.
 - The near-miss clusters above (`func`/`Function`, `macro`/`Macro`) are flagged, not
   resolved — whether/how far to extend `EntryType`'s alias list beyond what
-  `docsets/` needs is an open follow-up (see decision 9, `PLAN.md`).
+  `docsets/` needs is an open follow-up (see ADR-7).
 
 ## Sources
 
 - `zealdocs/zeal`, `src/libs/registry/docset.cpp` (`Docset::parseSymbolType`) —
   cloned shallow and read directly, not from memory.
-- `github.com/Kapeli/feeds` — same docset feed source `PROGRESS.md` (M0) used for
-  `Bash`/`SQLite`/`Lua`.
+- `github.com/Kapeli/feeds` — the feed source the local
+  `Bash`/`SQLite`/`Lua` docsets came from.
 - Real docsets in `docsets/` (gitignored) and the 20 surveyed above (not kept
   locally — downloaded to a scratch directory and discarded after the survey).
