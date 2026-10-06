@@ -1,29 +1,16 @@
-use std::path::PathBuf;
+mod common;
 
 use dashtui::docset::entry::{Entry, EntryError};
 use dashtui::docset::index::search_index::{IndexError, read_entries};
-use rusqlite::{Connection, Error};
-use tempfile::TempDir;
+use rusqlite::Error;
 
-/// Builds a real SQLite file from a fixture's SQL, inside a fresh temp dir.
-///
-/// Returns the `TempDir` along with the file's path because the directory
-/// is deleted when the `TempDir` is dropped: callers must keep it alive for
-/// the whole test with `let (_dir, path) = ...`. Writing `let (_, path)`
-/// instead would drop it, and delete the file, immediately.
-fn fixture_db(sql: &str) -> (TempDir, PathBuf) {
-    let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("docSet.dsidx");
-    let conn = Connection::open(&path).unwrap();
-    conn.execute_batch(sql).unwrap();
-    (dir, path)
-}
+use crate::common::FixtureDatabase;
 
 /// Every row of `valid.sql` comes back as an `Entry`, in `id` order, equal to
 /// what `Entry::try_from` makes of the same row.
 #[test]
 fn reads_every_row_of_a_valid_index() {
-    let (_dir, path) = fixture_db(include_str!("fixtures/search_index/valid.sql"));
+    let (_dir, path) = FixtureDatabase::Valid.build();
 
     let entries = read_entries(&path).unwrap();
 
@@ -58,7 +45,7 @@ fn reads_every_row_of_a_valid_index() {
 /// A valid but empty database returns Ok() with no rows.
 #[test]
 fn returns_empty_vec_for_empty_table() {
-    let (_dir, path) = fixture_db(include_str!("fixtures/search_index/empty_table.sql"));
+    let (_dir, path) = FixtureDatabase::EmptyTable.build();
     let entries = read_entries(&path).unwrap();
 
     assert!(entries.is_empty());
@@ -91,7 +78,7 @@ fn non_database_file_is_an_error() {
 /// error, not an empty `Vec`.
 #[test]
 fn database_without_search_index_table_is_an_error() {
-    let (_dir, path) = fixture_db(include_str!("fixtures/search_index/no_search_index.sql"));
+    let (_dir, path) = FixtureDatabase::NoSearchIndex.build();
     let err = read_entries(&path).unwrap_err();
 
     std::assert_matches!(err, IndexError::Database(_));
@@ -101,7 +88,7 @@ fn database_without_search_index_table_is_an_error() {
 /// (not 2, the row's position) and `EntryError::EmptyPath`.
 #[test]
 fn invalid_row_error_carries_its_row_id() {
-    let (_dir, path) = fixture_db(include_str!("fixtures/search_index/empty_path.sql"));
+    let (_dir, path) = FixtureDatabase::EmptyPath.build();
     let err = read_entries(&path).unwrap_err();
 
     std::assert_matches!(
@@ -116,7 +103,7 @@ fn invalid_row_error_carries_its_row_id() {
 /// `null_path.sql`: a `NULL` column is an error.
 #[test]
 fn null_column_is_an_error() {
-    let (_dir, path) = fixture_db(include_str!("fixtures/search_index/null_path.sql"));
+    let (_dir, path) = FixtureDatabase::NullPath.build();
     let err = read_entries(&path).unwrap_err();
 
     std::assert_matches!(

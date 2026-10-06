@@ -1,13 +1,17 @@
 pub mod entry;
 pub mod index;
 pub mod meta;
+use std::collections::BTreeMap;
 use std::io;
 use std::io::ErrorKind::{NotADirectory, NotFound};
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 
+use crate::docset::entry::EntryType;
+use crate::docset::index::search_index::{IndexError, read_entries};
 use crate::docset::meta::DocsetMeta;
+use crate::stats::count_types;
 
 #[derive(Debug, PartialEq, Eq, Serialize)]
 pub struct Docset {
@@ -16,10 +20,22 @@ pub struct Docset {
     pub meta: Option<DocsetMeta>,
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum DocsetError {
+    #[error("Failed to read index")]
+    Index(#[from] IndexError),
+}
+
 impl Docset {
     /// Returns the path to the docset's index DB.
     pub fn index_path(&self) -> PathBuf {
         self.path.join("Contents/Resources/docSet.dsidx")
+    }
+
+    /// Get the stats for a docset
+    pub fn load_stats(&self) -> Result<BTreeMap<EntryType, usize>, DocsetError> {
+        let index = read_entries(&self.index_path())?;
+        Ok(count_types(&index))
     }
 
     /// Creates a `Docset` from a [`PathBuf`]

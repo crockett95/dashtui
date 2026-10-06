@@ -18,6 +18,22 @@ pub enum EntryType {
     Other(String),
 }
 
+impl std::fmt::Display for EntryType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let label = match self {
+            Self::Builtin => "Builtin",
+            Self::Function => "Function",
+            Self::Guide => "Guide",
+            Self::Macro => "Macro",
+            Self::Parameter => "Parameter",
+            Self::Variable => "Variable",
+            Self::Word => "Word",
+            Self::Other(other_type) => other_type,
+        };
+        f.pad(label)
+    }
+}
+
 impl From<&str> for EntryType {
     /// Converts a raw `type` string from a docset's index into an
     /// `EntryType`.
@@ -202,6 +218,27 @@ mod test {
         assert_eq!(
             EntryType::from("some-future-docset-type"),
             EntryType::Other("some-future-docset-type".to_owned())
+        );
+    }
+
+    #[test]
+    fn canonical_types_map_to_their_string_names() {
+        assert_eq!("Builtin", EntryType::Builtin.to_string());
+        assert_eq!("Function", EntryType::Function.to_string());
+        assert_eq!("Guide", EntryType::Guide.to_string());
+        assert_eq!("Parameter", EntryType::Parameter.to_string());
+        assert_eq!("Variable", EntryType::Variable.to_string());
+        assert_eq!("Word", EntryType::Word.to_string());
+        assert_eq!("Macro", EntryType::Macro.to_string());
+    }
+
+    #[test]
+    fn other_types_map_to_index_names() {
+        assert_eq!("", EntryType::Other(String::new()).to_string());
+        assert_eq!("first", EntryType::Other(String::from("first")).to_string());
+        assert_eq!(
+            "second",
+            EntryType::Other(String::from("second")).to_string()
         );
     }
 }
