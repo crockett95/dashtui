@@ -1,4 +1,4 @@
-//! Reader for "schema A" indexes: a single SQLite table,
+//! Reader for SearchIndex-schema indexes: a single SQLite table,
 //! `searchIndex(id INTEGER PRIMARY KEY, name TEXT, type TEXT, path TEXT)`,
 //! with no `NOT NULL` or `CHECK` constraints on any column.
 
@@ -8,9 +8,9 @@ use rusqlite::{Connection, OpenFlags, Row};
 
 use crate::docset::entry::{Entry, EntryError};
 
-/// Why a schema-A index couldn't be read.
+/// Why a SearchIndex-schema index couldn't be read.
 #[derive(Debug, PartialEq, thiserror::Error)]
-pub enum IndexError {
+pub enum SearchIndexError {
     #[error("could not read the database")]
     Database(#[from] rusqlite::Error),
     #[error("could not read row (id: {id}) from the database")]
@@ -38,42 +38,42 @@ pub enum IndexError {
 /// - the file is missing, or isn't a SQLite database;
 /// - the database has no `searchIndex` table (e.g. a Core Data docset);
 /// - a row can't be read (e.g. a `NULL` column) or converted into an `Entry`.
-pub fn read_entries(index_path: &Path) -> Result<Vec<Entry>, IndexError> {
+pub fn read_entries(index_path: &Path) -> Result<Vec<Entry>, SearchIndexError> {
     let conn = Connection::open_with_flags(
         index_path,
         OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
     )?;
 
-    let mut query = conn.prepare(include_str!("read_all.sql"))?;
+    let mut query = conn.prepare(include_str!("read_search_index_all.sql"))?;
     query.query(())?.and_then(read_row).collect()
 }
 
 /// Reads a single `searchIndex` database row into an [`Entry`].
 ///
 /// Expects a valid row containing `id`, `name`, `type`, and `path` columns (see
-/// `read_all.sql` for the actual query shape). Calls [`Entry::try_from`] with
-/// the resultant values.
+/// `read_search_index_all.sql` for the actual query shape). Calls
+/// [`Entry::try_from`] with the resultant values.
 ///
 /// # Errors
 ///
 /// Fails on the first read issue:
-/// - [`IndexError::Database`] if the row's `id` cannot be read.
-/// - [`IndexError::RowRead`] if the row's other columns cannot be read, e.g. a
-///   `NULL`. `id` cannot use this as the `id` is not known if it errors.
-/// - [`IndexError::RowParse`] if the values do not parse to [`Entry`].
-fn read_row(row: &Row<'_>) -> Result<Entry, IndexError> {
+/// - [`SearchIndexError::Database`] if the row's `id` cannot be read.
+/// - [`SearchIndexError::RowRead`] if the row's other columns cannot be read,
+///   e.g. a `NULL`. `id` cannot use this as the `id` is not known if it errors.
+/// - [`SearchIndexError::RowParse`] if the values do not parse to [`Entry`].
+fn read_row(row: &Row<'_>) -> Result<Entry, SearchIndexError> {
     let id = row.get("id")?;
 
     let name: String = row
         .get("name")
-        .map_err(|sqlite_error| IndexError::RowRead { id, sqlite_error })?;
+        .map_err(|sqlite_error| SearchIndexError::RowRead { id, sqlite_error })?;
     let entry_type: String = row
         .get("type")
-        .map_err(|sqlite_error| IndexError::RowRead { id, sqlite_error })?;
+        .map_err(|sqlite_error| SearchIndexError::RowRead { id, sqlite_error })?;
     let path: String = row
         .get("path")
-        .map_err(|sqlite_error| IndexError::RowRead { id, sqlite_error })?;
+        .map_err(|sqlite_error| SearchIndexError::RowRead { id, sqlite_error })?;
 
     Entry::try_from((name.as_str(), entry_type.as_str(), path.as_str()))
-        .map_err(|entry_error| IndexError::RowParse { id, entry_error })
+        .map_err(|entry_error| SearchIndexError::RowParse { id, entry_error })
 }

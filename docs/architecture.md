@@ -23,6 +23,7 @@ App state (mode, query, results, selection, doc, scroll, history)
 - **Index reading** turns a docset's SQLite index into `Entry` values. There
   are two on-disk schemas behind one trait (ADR-3), and entry types are
   normalized into `EntryType` (ADR-7, [entry-types.md](entry-types.md)).
+  See [Terminology](#terminology) for what "index" and "SearchIndex" mean.
 - **Rendering** happens in two stages: HTML is parsed once into `Block`s, and
   layout wraps them to the current width, so a resize doesn't parse again
   (ADR-1).
@@ -48,15 +49,16 @@ src/
     meta.rs           Info.plist -> DocsetMeta
     entry.rs          Entry, EntryType
     index/
-      mod.rs          index reading, error types
-      search_index.rs schema A (flat searchIndex table)
+      mod.rs          schema detection (SchemaType, detect_schema)
+      search_index.rs SearchIndex schema reader (one searchIndex table)
+      *.sql           queries, loaded with include_str!
 ```
 
 Planned, not built yet:
 
 ```
 src/
-  docset/index/core_data.rs  schema B (Core Data tables); IndexReader trait in index/mod.rs
+  docset/index/core_data.rs  Core Data schema reader; IndexReader trait in index/mod.rs
   search.rs                  query -> ranked Hits
   render/
     parse.rs                 HTML -> Vec<Block>
@@ -66,3 +68,19 @@ src/
   worker.rs                  background thread + channels
   config.rs                  settings
 ```
+
+## Terminology
+
+- **Index**: a docset's SQLite database of entries
+  (`Contents/Resources/docSet.dsidx`), whatever its layout. The
+  `docset::index` module and the planned `IndexReader` trait use the word in
+  this sense.
+- **SearchIndex schema**: an index whose entries live in one `searchIndex`
+  table (`id`, `name`, `type`, `path`). "SearchIndex" names the schema, while
+  `searchIndex` in code formatting names the table itself.
+- **Core Data schema**: an index stored as Apple Core Data tables (`ZTOKEN`,
+  `ZTOKENTYPE`, `ZTOKENMETAINFORMATION`, `ZFILEPATH`, ...), where each entry is
+  assembled through joins and the anchor is a separate column.
+
+Earlier notes called these "schema A" (SearchIndex) and "schema B" (Core
+Data).

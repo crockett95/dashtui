@@ -1,7 +1,7 @@
 mod common;
 
 use dashtui::docset::entry::{Entry, EntryError};
-use dashtui::docset::index::search_index::{IndexError, read_entries};
+use dashtui::docset::index::search_index::{SearchIndexError, read_entries};
 use rusqlite::Error;
 
 use crate::common::FixtureDatabase;
@@ -59,7 +59,7 @@ fn missing_file_is_an_error_and_is_not_created() {
     let path = dir.path().join("docSet.dsidx");
     let err = read_entries(&path).unwrap_err();
 
-    std::assert_matches!(err, IndexError::Database(_));
+    std::assert_matches!(err, SearchIndexError::Database(_));
     assert!(!path.exists());
 }
 
@@ -71,7 +71,7 @@ fn non_database_file_is_an_error() {
     std::fs::write(&path, "Hello world").unwrap();
 
     let err = read_entries(&path).unwrap_err();
-    std::assert_matches!(err, IndexError::Database(_));
+    std::assert_matches!(err, SearchIndexError::Database(_));
 }
 
 /// `no_search_index.sql`: a real database with no `searchIndex` table is an
@@ -81,7 +81,7 @@ fn database_without_search_index_table_is_an_error() {
     let (_dir, path) = FixtureDatabase::NoSearchIndex.build();
     let err = read_entries(&path).unwrap_err();
 
-    std::assert_matches!(err, IndexError::Database(_));
+    std::assert_matches!(err, SearchIndexError::Database(_));
 }
 
 /// `empty_path.sql`: the error is your row-level variant, carrying `id` 20
@@ -93,7 +93,7 @@ fn invalid_row_error_carries_its_row_id() {
 
     std::assert_matches!(
         err,
-        IndexError::RowParse {
+        SearchIndexError::RowParse {
             id: 20,
             entry_error: EntryError::EmptyPath
         }
@@ -108,7 +108,7 @@ fn null_column_is_an_error() {
 
     std::assert_matches!(
         err,
-        IndexError::RowRead {
+        SearchIndexError::RowRead {
             id: 20,
             sqlite_error: Error::InvalidColumnType(_, _, _)
         }

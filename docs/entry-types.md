@@ -1,7 +1,8 @@
 # Docset entry `type` conventions
 
-There's no formal spec for a docset entry's `type` (schema A: `searchIndex.type`;
-Core Data / schema B: `ZTOKENTYPE.ZTYPENAME`) — it's free text chosen by whatever
+There's no formal spec for a docset entry's `type` (SearchIndex schema:
+`searchIndex.type`; Core Data schema: `ZTOKENTYPE.ZTYPENAME`; see
+[Terminology](architecture.md#terminology)) — it's free text chosen by whatever
 generator built the docset (`dashing`, `doc2dash`, hand-rolled scripts...), with no
 `CHECK` constraint, foreign key, or lookup table backing it in either schema
 (verified via `sqlite3 .schema` against real docsets). This page
@@ -70,9 +71,15 @@ already decoded it.
 Pulled from `github.com/Kapeli/feeds` (the same source M0 used to get
 `Bash`/`SQLite`/`Lua`): Python, JavaScript, TypeScript, Java, C, C++, Go, Rust, Ruby,
 PHP, Swift, React, Django, Ruby_on_Rails, VueJS, NodeJS, PostgreSQL, MySQL, Redis,
-Docker, plus the existing Bash/SQLite/Lua. All 23 exposed a `searchIndex` table (9 of
-the 20 new ones — C++, C, Django, Java, JavaScript, MySQL, Python, Ruby_on_Rails —
-*also* carried Core Data tables in the same file; schema isn't strictly either/or).
+Docker, plus the existing Bash/SQLite/Lua. C++, C, Django, Java, JavaScript, MySQL,
+Python and Ruby_on_Rails (plus Lua) use the Core Data schema; the rest use the
+SearchIndex schema (see [Terminology](architecture.md#terminology)).
+
+An earlier version of this page said every surveyed docset had a `searchIndex` table
+and that the Core Data ones *also* had one. That was wrong: rechecked 2026-10-08
+against current downloads of C++, Django, Java, JavaScript, MySQL and Python, none of
+them has a `searchIndex` table, only the Core Data tables. C and Ruby_on_Rails weren't
+rechecked.
 
 **183 (docset, type) rows, 55 distinct type strings. 36 shared verbatim by 2+
 docsets; 19 unique to exactly one docset.**

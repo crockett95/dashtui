@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use dashtui::docset::{
     Docset, DocsetError,
     entry::{EntryError, EntryType},
-    index::search_index::IndexError,
+    index::search_index::SearchIndexError,
 };
 use tempfile::tempdir;
 
@@ -36,7 +36,7 @@ fn returns_empty_stats_if_no_rows() {
 fn returns_error_for_invalid_db() {
     let (_dir, docset) = fixture_docset(FixtureDatabase::NoSearchIndex);
     let counts = docset.load_stats().unwrap_err();
-    std::assert_matches!(counts, DocsetError::Index(IndexError::Database(_)))
+    std::assert_matches!(counts, DocsetError::Index(SearchIndexError::Database(_)))
 }
 #[test]
 fn returns_error_for_invalid_data() {
@@ -44,7 +44,7 @@ fn returns_error_for_invalid_data() {
     let counts = docset.load_stats().unwrap_err();
     std::assert_matches!(
         counts,
-        DocsetError::Index(IndexError::RowParse {
+        DocsetError::Index(SearchIndexError::RowParse {
             id: 20,
             entry_error: EntryError::EmptyPath
         })
@@ -58,5 +58,5 @@ fn return_error_if_no_index() {
         meta: None,
     };
     let counts = docset.load_stats().unwrap_err();
-    std::assert_matches!(counts, DocsetError::Index(IndexError::Database(_)))
+    std::assert_matches!(counts, DocsetError::Index(SearchIndexError::Database(_)))
 }

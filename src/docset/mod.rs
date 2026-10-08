@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 
 use crate::docset::entry::EntryType;
-use crate::docset::index::search_index::{IndexError, read_entries};
+use crate::docset::index::search_index::{SearchIndexError, read_entries};
 use crate::docset::meta::DocsetMeta;
 use crate::stats::count_types;
 
@@ -23,7 +23,7 @@ pub struct Docset {
 #[derive(Debug, thiserror::Error)]
 pub enum DocsetError {
     #[error("Failed to read index")]
-    Index(#[from] IndexError),
+    Index(#[from] SearchIndexError),
 }
 
 impl Docset {
@@ -66,7 +66,7 @@ impl Docset {
 ///
 /// The search is recursive, but does **not** look inside a directory once
 /// it's been identified as a docset — a `.docset` directory's own contents
-/// (its search index, its HTML) are not themselves searched for nested
+/// (its index, its HTML) are not themselves searched for nested
 /// docsets.
 ///
 /// Returns every match found, in no particular order.
