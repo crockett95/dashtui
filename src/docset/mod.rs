@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 
 use crate::docset::entry::EntryType;
-use crate::docset::index::search_index::{SearchIndexError, read_entries};
+use crate::docset::index::read_entries;
 use crate::docset::meta::DocsetMeta;
 use crate::stats::count_types;
 
@@ -23,7 +23,7 @@ pub struct Docset {
 #[derive(Debug, thiserror::Error)]
 pub enum DocsetError {
     #[error("Failed to read index")]
-    Index(#[from] SearchIndexError),
+    Index(#[from] index::Error),
 }
 
 impl Docset {
