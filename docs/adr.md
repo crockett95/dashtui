@@ -34,6 +34,9 @@ start, but it mixes state logic with terminal I/O.
 
 ## ADR-3: Index readers behind a trait object
 
+**Superseded by [ADR-8](#adr-8-index-schemas-via-enum-dispatch-on-schematype)**
+(2026-10-09). Kept for the record.
+
 **Decision:** docsets use one of two on-disk index schemas: a flat
 `searchIndex` table, or a Core Data schema that needs joins. Both are read
 through one `IndexReader` trait, handled as `Box<dyn IndexReader>`.
@@ -116,3 +119,38 @@ supports `match`, and gives per-kind behavior somewhere to live.
 **Rejected:** a closed enum covering Dash's full informal vocabulary, which
 risks those wrong merges. Also rejected: a bare `String`, which loses
 `match`-driven design.
+
+## ADR-8: Index schemas via enum dispatch on `SchemaType`
+
+Supersedes ADR-3.
+
+**Decision:** the schema is detected once per run (`detect_schema`, giving a
+`SchemaType` enum). A `SchemaType` method takes the run's single
+`&Connection` and returns that schema's prepared `Statement` for reading every
+entry. From there, one shared path maps every row through the same row reader
+into `Entry` values, and operations (`stats`, `search`, the TUI) work on those
+entries in memory. The only schema-specific code is choosing and preparing the
+query. An operation gets its own per-schema query only when a measurement shows
+the in-memory approach is too slow for it.
+
+**Why:** the SearchIndex and Core Data queries return the same columns, so
+the schemas differ only in their SQL. Row validation and errors are written
+once. Loading everything is cheap (13,801 rows read and counted in 9 ms; the
+largest local index, 59,956 rows, queries in under 100 ms), counts must use
+normalized `EntryType`s (ADR-7), and fuzzy ranking can't be expressed in SQL,
+so search runs in memory regardless. Letting the schema own preparation keeps room to
+change how a query is prepared (`prepare_cached`, choosing or building SQL from
+the operation's inputs) without touching callers. The set of schemas is
+closed (nothing outside the crate adds one), so `match` on `SchemaType` checks
+every schema is handled, and a third schema is one new variant plus one query
+per operation.
+
+**Rejected:** ADR-3's `Box<dyn IndexReader>`, which would put a trait object
+around what is only a choice of query. Revisit it if a schema ever needs
+different Rust logic, not just different SQL, or if per-schema `match`es
+spread across many modules. Also rejected: a query per operation from the
+start (`GROUP BY` for stats, `LIKE` for search), which can't rank fuzzy
+matches and would normalize entry types in SQL. Also rejected: schema methods
+returning the SQL text, which is equally short but leaves every caller responsible for
+preparing, so a change in how queries are prepared touches every operation;
+and returning `Rows`, which can't outlive the `Statement` it borrows.

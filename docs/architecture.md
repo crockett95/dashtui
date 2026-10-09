@@ -21,7 +21,9 @@ App state (mode, query, results, selection, doc, scroll, history)
   ([docset-format.md](docset-format.md)). Docsets whose metadata won't parse
   are kept (ADR-6).
 - **Index reading** turns a docset's SQLite index into `Entry` values. There
-  are two on-disk schemas behind one trait (ADR-3), and entry types are
+  are two on-disk schemas; the detected schema supplies a prepared read-all
+  statement, every entry is read through one shared path and then worked on
+  in memory (ADR-8), and entry types are
   normalized into `EntryType` (ADR-7, [entry-types.md](entry-types.md)).
   See [Terminology](#terminology) for what "index" and "SearchIndex" mean.
 - **Rendering** happens in two stages: HTML is parsed once into `Block`s, and
@@ -58,7 +60,7 @@ Planned, not built yet:
 
 ```
 src/
-  docset/index/core_data.rs  Core Data schema reader; IndexReader trait in index/mod.rs
+  docset/index/*.sql         one read-all query per schema, more only when measured (ADR-8)
   search.rs                  query -> ranked Hits
   render/
     parse.rs                 HTML -> Vec<Block>
@@ -73,8 +75,7 @@ src/
 
 - **Index**: a docset's SQLite database of entries
   (`Contents/Resources/docSet.dsidx`), whatever its layout. The
-  `docset::index` module and the planned `IndexReader` trait use the word in
-  this sense.
+  `docset::index` module uses the word in this sense.
 - **SearchIndex schema**: an index whose entries live in one `searchIndex`
   table (`id`, `name`, `type`, `path`). "SearchIndex" names the schema, while
   `searchIndex` in code formatting names the table itself.
