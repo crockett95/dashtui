@@ -66,7 +66,8 @@ impl SchemaType {
     ///
     /// Every schema's query returns the columns the shared row reader expects
     /// (`id`, `name`, `type`, `path`), so rows from any schema are read the
-    /// same way.
+    /// same way. A query may also return `fragment` (an anchor stored
+    /// separately from the path), and no other columns.
     ///
     /// # Errors
     ///
@@ -82,6 +83,8 @@ impl SchemaType {
 
 #[cfg(test)]
 mod test {
+
+    use std::collections::HashSet;
 
     use super::*;
 
@@ -113,6 +116,12 @@ mod test {
         }
     }
 
+    macro_rules! fixture_db {
+        ($name:literal) => {
+            include_str!(concat!("../../../tests/fixtures/", $name))
+        };
+    }
+
     fn detect_fixture_schema(sql: &str) -> Result<SchemaType, Error> {
         let conn = Connection::open_in_memory().unwrap();
         conn.execute_batch(sql).unwrap();
@@ -124,73 +133,102 @@ mod test {
 
     #[test]
     fn detects_search_index_schema() {
-        let result = detect_fixture_schema(include_str!(
-            "../../../tests/fixtures/schema_detection/search_index.sql"
-        ))
-        .unwrap();
+        let result =
+            detect_fixture_schema(fixture_db!("schema_detection/search_index.sql")).unwrap();
         assert_eq!(result, SchemaType::SearchIndex)
     }
 
     #[test]
     fn detects_search_index_schema_if_uppercase() {
-        let result = detect_fixture_schema(include_str!(
-            "../../../tests/fixtures/schema_detection/search_index_uppercase.sql"
-        ))
-        .unwrap();
+        let result =
+            detect_fixture_schema(fixture_db!("schema_detection/search_index_uppercase.sql"))
+                .unwrap();
         assert_eq!(result, SchemaType::SearchIndex)
     }
 
     #[test]
     fn detects_core_data_schema() {
-        let result = detect_fixture_schema(include_str!(
-            "../../../tests/fixtures/schema_detection/core_data.sql"
-        ))
-        .unwrap();
+        let result = detect_fixture_schema(fixture_db!("schema_detection/core_data.sql")).unwrap();
         assert_eq!(result, SchemaType::CoreData)
     }
 
     #[test]
     fn detects_core_data_schema_with_zeal_view() {
-        let result = detect_fixture_schema(include_str!(
-            "../../../tests/fixtures/schema_detection/core_data_with_zeal_view.sql"
-        ))
-        .unwrap();
+        let result =
+            detect_fixture_schema(fixture_db!("schema_detection/core_data_with_zeal_view.sql"))
+                .unwrap();
         assert_eq!(result, SchemaType::CoreData)
     }
 
     #[test]
     fn detects_core_data_schema_if_both_tables() {
-        let result = detect_fixture_schema(include_str!(
-            "../../../tests/fixtures/schema_detection/both_tables.sql"
-        ))
-        .unwrap();
+        let result =
+            detect_fixture_schema(fixture_db!("schema_detection/both_tables.sql")).unwrap();
         assert_eq!(result, SchemaType::CoreData)
     }
 
     #[test]
     fn detects_invalid_schema_for_empty_db() {
-        let result = detect_fixture_schema(include_str!(
-            "../../../tests/fixtures/schema_detection/empty.sql"
-        ))
-        .unwrap_err();
+        let result = detect_fixture_schema(fixture_db!("schema_detection/empty.sql")).unwrap_err();
         assert_eq!(result, Error::InvalidSchema)
     }
 
     #[test]
     fn detects_invalid_schema_for_view_only() {
-        let result = detect_fixture_schema(include_str!(
-            "../../../tests/fixtures/schema_detection/search_index_view_only.sql"
-        ))
-        .unwrap_err();
+        let result =
+            detect_fixture_schema(fixture_db!("schema_detection/search_index_view_only.sql"))
+                .unwrap_err();
         assert_eq!(result, Error::InvalidSchema)
     }
 
     #[test]
     fn detects_invalid_schema_for_unrelated_schema() {
-        let result = detect_fixture_schema(include_str!(
-            "../../../tests/fixtures/schema_detection/unrelated.sql"
-        ))
-        .unwrap_err();
+        let result =
+            detect_fixture_schema(fixture_db!("schema_detection/unrelated.sql")).unwrap_err();
         assert_eq!(result, Error::InvalidSchema)
+    }
+
+    fn entry_required_columns() -> HashSet<&'static str> {
+        HashSet::from(["id", "name", "type", "path"])
+    }
+
+    fn entry_optional_columns() -> HashSet<&'static str> {
+        HashSet::from(["fragment"])
+    }
+
+    /// Asserts that an entry-reading query follows ADR-8's shared-reader
+    /// contract: it returns every column in [`entry_required_columns`], and
+    /// any other column it returns is in [`entry_optional_columns`].
+    macro_rules! assert_has_entry_columns {
+        ($query:expr) => {
+            let columns: HashSet<_> = $query.column_names().into_iter().collect();
+            let expected = entry_required_columns();
+
+            assert!(columns.is_superset(&expected));
+
+            let extra_columns: HashSet<_> = columns.difference(&expected).copied().collect();
+            let expected_opt = entry_optional_columns();
+            assert!(extra_columns.is_subset(&expected_opt));
+        };
+    }
+
+    #[test]
+    fn reads_expected_cols_of_search_index_schema() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(fixture_db!("search_index/valid.sql"))
+            .unwrap();
+
+        let query = SchemaType::SearchIndex.read_all(&conn).unwrap();
+        assert_has_entry_columns!(query);
+    }
+
+    #[test]
+    fn fails_to_read_expected_cols_of_invalid_search_index() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(fixture_db!("search_index/no_search_index.sql"))
+            .unwrap();
+
+        let err = SchemaType::SearchIndex.read_all(&conn).unwrap_err();
+        std::assert_matches!(err, rusqlite::Error::SqliteFailure(_, _))
     }
 }
