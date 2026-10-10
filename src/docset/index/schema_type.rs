@@ -76,7 +76,7 @@ impl SchemaType {
     pub fn read_all<'a>(self, conn: &'a Connection) -> rusqlite::Result<Statement<'a>> {
         match self {
             SchemaType::SearchIndex => conn.prepare(include_str!("read_search_index_all.sql")),
-            SchemaType::CoreData => todo!(),
+            SchemaType::CoreData => conn.prepare(include_str!("read_core_all.sql")),
         }
     }
 }
@@ -229,6 +229,26 @@ mod test {
             .unwrap();
 
         let err = SchemaType::SearchIndex.read_all(&conn).unwrap_err();
+        std::assert_matches!(err, rusqlite::Error::SqliteFailure(_, _))
+    }
+
+    #[test]
+    fn reads_expected_cols_of_valid_core_data_schema() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(fixture_db!("core_data/valid.sql"))
+            .unwrap();
+
+        let query = SchemaType::CoreData.read_all(&conn).unwrap();
+        assert_has_entry_columns!(query);
+    }
+
+    #[test]
+    fn fails_to_read_expected_cols_of_invalid_core_data_schema() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(fixture_db!("core_data/missing_tables.sql"))
+            .unwrap();
+
+        let err = SchemaType::CoreData.read_all(&conn).unwrap_err();
         std::assert_matches!(err, rusqlite::Error::SqliteFailure(_, _))
     }
 }
