@@ -65,7 +65,7 @@ pub fn read_entries(index_path: &Path) -> Result<Vec<Entry>, Error> {
     query.query(())?.and_then(read_row).collect()
 }
 
-/// Reads a single `searchIndex` database row into an [`Entry`].
+/// Reads a single docset database row into an [`Entry`].
 ///
 /// Expects a valid row containing `id`, `name`, `type`, and `path` columns (see
 /// `read_search_index_all.sql` for the actual query shape). Calls
