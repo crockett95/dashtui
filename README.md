@@ -6,8 +6,8 @@ read the page as wrapped and styled text in the terminal, follow links, and go
 back.
 
 > **Status: early.** Only docset discovery (`list`) works so far. Index reading,
-> search, and the TUI are in progress. See [docs/architecture.md](docs/architecture.md)
-> for the planned design.
+> search, and the TUI are in progress. See
+> [docs/architecture.md](docs/architecture.md) for the planned design.
 > **Everything subject to change before v1**
 
 **NB**: _This is a project for me to learn
@@ -36,20 +36,30 @@ develop.
 cargo run -- list docsets
 ```
 
-```
+```console
 Bash    docsets/Bash.docset
 Lua 5.5 docsets/Lua.docset
 ```
 
-`--include-broken` also lists docsets whose `Info.plist` can't be read, shown
-by path. `--json` prints JSON instead of text:
+`--include-broken` also lists docsets whose `Info.plist` can't be read, shown by
+path. `--json` prints JSON instead of text:
 
 ```sh
 cargo run -- --json list docsets
 ```
 
 ```json
-{"docsets":[{"path":"docsets/Bash.docset","id":"bash","name":"Bash","platform_family":"bash","index_file":"bash/index.html"}]}
+{
+  "docsets": [
+    {
+      "path": "docsets/Bash.docset",
+      "id": "bash",
+      "name": "Bash",
+      "platform_family": "bash",
+      "index_file": "bash/index.html"
+    }
+  ]
+}
 ```
 
 The JSON output is a stable, tested interface for scripts and editor plugins
