@@ -1,16 +1,17 @@
 mod common;
 
-use dashtui::docset::entry::{Entry, EntryError};
+use dashtui::docset::entry;
+use dashtui::docset::entry::Entry;
 use dashtui::docset::index::{self, read_entries};
 use rusqlite::Error;
 
-use crate::common::FixtureDatabase;
+use crate::common::{FixtureDatabase, SearchIndexFixtureDb};
 
 /// Every row of `valid.sql` comes back as an `Entry`, in `id` order, equal to
 /// what `Entry::try_from` makes of the same row.
 #[test]
 fn reads_every_row_of_a_valid_index() {
-    let (_dir, path) = FixtureDatabase::Valid.build();
+    let (_dir, path) = SearchIndexFixtureDb::Valid.build();
 
     let entries = read_entries(&path).unwrap();
 
@@ -19,23 +20,32 @@ fn reads_every_row_of_a_valid_index() {
             ":",
             "Builtin",
             "bash/Bourne-Shell-Builtins.html#//apple_ref/Builtin/%3A",
+            None,
         ),
-        ("Introduction", "Guide", "bash/Introduction.html"),
-        ("!", "Word", "bash/Pipelines.html#//apple_ref/Word/%21"),
+        ("Introduction", "Guide", "bash/Introduction.html", None),
+        (
+            "!",
+            "Word",
+            "bash/Pipelines.html#//apple_ref/Word/%21",
+            None,
+        ),
         (
             "abort (C-g)",
             "Function",
             "bash/Miscellaneous-Commands.html#//apple_ref/Function/abort%20%28C%2Dg%29",
+            None,
         ),
         (
             "_",
             "Variable",
             "bash/Bash-Variables.html#//apple_ref/Variable/%5F",
+            None,
         ),
         (
             "-",
             "Parameter",
             "bash/Special-Parameters.html#//apple_ref/Parameter/%2D",
+            None,
         ),
     ]
     .map(|row| Entry::try_from(row).unwrap());
@@ -45,7 +55,7 @@ fn reads_every_row_of_a_valid_index() {
 /// A valid but empty database returns Ok() with no rows.
 #[test]
 fn returns_empty_vec_for_empty_table() {
-    let (_dir, path) = FixtureDatabase::EmptyTable.build();
+    let (_dir, path) = SearchIndexFixtureDb::EmptyTable.build();
     let entries = read_entries(&path).unwrap();
 
     assert!(entries.is_empty());
@@ -78,24 +88,24 @@ fn non_database_file_is_an_error() {
 /// error, not an empty `Vec`.
 #[test]
 fn database_without_search_index_table_is_an_error() {
-    let (_dir, path) = FixtureDatabase::NoSearchIndex.build();
+    let (_dir, path) = SearchIndexFixtureDb::NoSearchIndex.build();
     let err = read_entries(&path).unwrap_err();
 
     std::assert_matches!(err, index::Error::Database(_));
 }
 
 /// `empty_path.sql`: the error is your row-level variant, carrying `id` 20
-/// (not 2, the row's position) and `EntryError::EmptyPath`.
+/// (not 2, the row's position) and `entry::Error::EmptyPath`.
 #[test]
 fn invalid_row_error_carries_its_row_id() {
-    let (_dir, path) = FixtureDatabase::EmptyPath.build();
+    let (_dir, path) = SearchIndexFixtureDb::EmptyPath.build();
     let err = read_entries(&path).unwrap_err();
 
     std::assert_matches!(
         err,
         index::Error::RowParse {
             id: 20,
-            entry_error: EntryError::EmptyPath
+            entry_error: entry::Error::EmptyPath
         }
     );
 }
@@ -103,7 +113,7 @@ fn invalid_row_error_carries_its_row_id() {
 /// `null_path.sql`: a `NULL` column is an error.
 #[test]
 fn null_column_is_an_error() {
-    let (_dir, path) = FixtureDatabase::NullPath.build();
+    let (_dir, path) = SearchIndexFixtureDb::NullPath.build();
     let err = read_entries(&path).unwrap_err();
 
     std::assert_matches!(

@@ -18,10 +18,7 @@ use std::path::Path;
 
 use rusqlite::{Connection, OpenFlags, Row};
 
-use crate::docset::{
-    entry::{Entry, EntryError},
-    index::schema_type::SchemaType,
-};
+use crate::docset::{entry, entry::Entry, index::schema_type::SchemaType};
 
 /// Why a docset-schema index couldn't be read.
 #[derive(Debug, PartialEq, thiserror::Error)]
@@ -40,36 +37,45 @@ pub enum Error {
     RowParse {
         id: i64,
         #[source]
-        entry_error: EntryError,
+        entry_error: entry::Error,
     },
 }
 
-/// Reads every row of the `searchIndex` table in the SQLite file at
-/// `index_path` (a docset's `docSet.dsidx`), ordered by `id`.
+/// Reads every entry from the docset index at `index_path` (a docset's
+/// `docSet.dsidx`), whichever schema it uses, ordered by the index's own ids.
 ///
-/// Opens the file read-only. It must never create or modify it.
+/// Opens the file read-only (it must never create or modify it), detects the
+/// schema on that one connection, then reads with that schema's query and the
+/// shared row reader (ADR-8).
 ///
 /// # Errors
 ///
 /// Fails on the first problem; it never skips a bad row:
-/// - the file is missing, or isn't a SQLite database;
-/// - the database has no `searchIndex` table (e.g. a Core Data docset);
-/// - a row can't be read (e.g. a `NULL` column) or converted into an `Entry`.
+/// - [`Error::Database`]: the file is missing or isn't a SQLite database, or
+///   the detected schema's tables are incomplete;
+/// - [`Error::Schema`]: the database matches neither schema;
+/// - [`Error::RowRead`] / [`Error::RowParse`]: a row can't be read (e.g. a
+///   `NULL` column, or a broken Core Data link) or converted into an `Entry`.
 pub fn read_entries(index_path: &Path) -> Result<Vec<Entry>, Error> {
     let conn = Connection::open_with_flags(
         index_path,
         OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
     )?;
 
-    let mut query = SchemaType::SearchIndex.read_all(&conn)?;
-    query.query(())?.and_then(read_row).collect()
+    let mut schema_query = SchemaType::detect_schema(&conn)?;
+    let detected: i64 = schema_query.query_one((), |row| row.get("schema_type"))?;
+    let schema = SchemaType::try_from(detected)?;
+
+    let mut query = schema.read_all(&conn)?;
+    query.query(())?.and_then(read_entry_row).collect()
 }
 
 /// Reads a single docset database row into an [`Entry`].
 ///
-/// Expects a valid row containing `id`, `name`, `type`, and `path` columns (see
-/// `read_search_index_all.sql` for the actual query shape). Calls
-/// [`Entry::try_from`] with the resultant values.
+/// Expects a row with `id`, `name`, `type`, `path`, and `fragment` columns, the
+/// shape every schema's read-all query returns (ADR-8). `fragment` may be
+/// `NULL`; the other columns may not. Calls [`Entry::try_from`] with the
+/// resultant values.
 ///
 /// # Errors
 ///
@@ -78,19 +84,20 @@ pub fn read_entries(index_path: &Path) -> Result<Vec<Entry>, Error> {
 /// - [`Error::RowRead`] if the row's other columns cannot be read,
 ///   e.g. a `NULL`. `id` cannot use this as the `id` is not known if it errors.
 /// - [`Error::RowParse`] if the values do not parse to [`Entry`].
-fn read_row(row: &Row<'_>) -> Result<Entry, Error> {
+fn read_entry_row(row: &Row<'_>) -> Result<Entry, Error> {
     let id = row.get("id")?;
+    let row_err = |sqlite_error| Error::RowRead { id, sqlite_error };
 
-    let name: String = row
-        .get("name")
-        .map_err(|sqlite_error| Error::RowRead { id, sqlite_error })?;
-    let entry_type: String = row
-        .get("type")
-        .map_err(|sqlite_error| Error::RowRead { id, sqlite_error })?;
-    let path: String = row
-        .get("path")
-        .map_err(|sqlite_error| Error::RowRead { id, sqlite_error })?;
+    let name: String = row.get("name").map_err(row_err)?;
+    let entry_type: String = row.get("type").map_err(row_err)?;
+    let path: String = row.get("path").map_err(row_err)?;
+    let fragment: Option<String> = row.get("fragment").map_err(row_err)?;
 
-    Entry::try_from((name.as_str(), entry_type.as_str(), path.as_str()))
-        .map_err(|entry_error| Error::RowParse { id, entry_error })
+    Entry::try_from((
+        name.as_str(),
+        entry_type.as_str(),
+        path.as_str(),
+        fragment.as_deref(),
+    ))
+    .map_err(|entry_error| Error::RowParse { id, entry_error })
 }

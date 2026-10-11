@@ -66,6 +66,10 @@ pub struct Entry {
     /// `#anchor` fragment or a Dash `<dash_entry_*>` marker -- turning this
     /// into an actual filesystem path plus anchor is M10's job, not this one's.
     path: String,
+    /// The anchor, when the index stores it separately from `path` (Core
+    /// Data's `ZANCHOR`), exactly as recorded. `None` when the index has none
+    /// for this entry, or keeps anchors inside `path` instead (SearchIndex).
+    fragment: Option<String>,
 }
 
 /// Why a raw `(name, type, path)` index row could not become an `Entry`.
@@ -74,7 +78,7 @@ pub struct Entry {
 /// empty or unrecognized type string just becomes `EntryType::Other` instead
 /// of an error.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-pub enum EntryError {
+pub enum Error {
     #[error("entry name is empty")]
     EmptyName,
     #[error("entry path is empty")]
@@ -97,30 +101,35 @@ impl Entry {
             name: String::from("name"),
             kind,
             path: String::from("path"),
+            fragment: None,
         }
     }
 }
 
-impl TryFrom<(&str, &str, &str)> for Entry {
-    type Error = EntryError;
+impl TryFrom<(&str, &str, &str, Option<&str>)> for Entry {
+    type Error = Error;
 
-    /// Converts a raw `(name, type, path)` index row into an `Entry`.
+    /// Converts a raw `(name, type, path, fragment)` index row into an `Entry`.
     ///
     /// # Errors
     ///
-    /// Returns `EntryError::EmptyName` if `name` is empty, or
-    /// `EntryError::EmptyPath` if `path` is empty.
-    fn try_from((name, raw_type, path): (&str, &str, &str)) -> Result<Self, Self::Error> {
+    /// Returns [`Error::EmptyName`] if `name` is empty, or
+    /// [`Error::EmptyPath`] if `path` is empty. `fragment` never fails: `None`
+    /// and any string are both accepted.
+    fn try_from(
+        (name, raw_type, path, fragment): (&str, &str, &str, Option<&str>),
+    ) -> Result<Self, Self::Error> {
         if name.is_empty() {
-            return Err(EntryError::EmptyName);
+            return Err(Error::EmptyName);
         }
         if path.is_empty() {
-            return Err(EntryError::EmptyPath);
+            return Err(Error::EmptyPath);
         }
         Ok(Self {
             name: name.to_owned(),
             path: path.to_owned(),
             kind: EntryType::from(raw_type),
+            fragment: fragment.map(String::from),
         })
     }
 }
@@ -131,32 +140,39 @@ mod test {
 
     #[test]
     fn valid_row_converts_to_entry() {
-        let entry = Entry::try_from(("foo", "func", "baz")).unwrap();
+        let entry = Entry::try_from(("foo", "func", "baz", Some("quux"))).unwrap();
         assert_eq!(entry.name, "foo");
         assert_eq!(entry.kind, EntryType::Function);
         assert_eq!(entry.path, "baz");
+        assert_eq!(entry.fragment.as_deref(), Some("quux"))
     }
 
     #[test]
     fn empty_name_is_rejected() {
-        let error = Entry::try_from(("", "bar", "baz")).unwrap_err();
-        assert_eq!(error, EntryError::EmptyName);
+        let error = Entry::try_from(("", "bar", "baz", Some("quux"))).unwrap_err();
+        assert_eq!(error, Error::EmptyName);
     }
 
     #[test]
     fn empty_path_is_rejected() {
-        let error = Entry::try_from(("foo", "bar", "")).unwrap_err();
-        assert_eq!(error, EntryError::EmptyPath);
+        let error = Entry::try_from(("foo", "bar", "", Some("quux"))).unwrap_err();
+        assert_eq!(error, Error::EmptyPath);
+    }
+
+    #[test]
+    fn none_fragment_is_not_rejected() {
+        let entry = Entry::try_from(("foo", "bar", "baz", None)).unwrap();
+        assert_eq!(entry.fragment, None);
     }
 
     #[test]
     fn collecting_valid_rows_yields_all_entries() {
         let data = [
-            ("foo1", "bar", "baz"),
-            ("foo2", "bar", "baz"),
-            ("foo3", "bar", "baz"),
-            ("foo4", "bar", "baz"),
-            ("foo5", "bar", "baz"),
+            ("foo1", "bar", "baz", Some("quux")),
+            ("foo2", "bar", "baz", Some("quux")),
+            ("foo3", "bar", "baz", Some("quux")),
+            ("foo4", "bar", "baz", Some("quux")),
+            ("foo5", "bar", "baz", Some("quux")),
         ];
         let entries = data
             .into_iter()
@@ -176,20 +192,20 @@ mod test {
     #[test]
     fn collecting_rows_short_circuits_on_first_error() {
         let data = [
-            ("foo", "bar", "baz"),
+            ("foo", "bar", "baz", None),
             // First error
-            ("foo", "bar", ""),
-            ("foo", "bar", "baz"),
+            ("foo", "bar", "", Some("quux")),
+            ("foo", "bar", "baz", Some("quux")),
             // Second error because we shouldn't make it this far
-            ("", "bar", "baz"),
-            ("foo", "bar", "baz"),
+            ("", "bar", "baz", None),
+            ("foo", "bar", "baz", None),
         ];
         let error = data
             .into_iter()
             .map(Entry::try_from)
             .collect::<Result<Vec<_>, _>>()
             .unwrap_err();
-        assert_eq!(error, EntryError::EmptyPath);
+        assert_eq!(error, Error::EmptyPath);
     }
 
     #[test]

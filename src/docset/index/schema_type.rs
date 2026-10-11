@@ -65,9 +65,9 @@ impl SchemaType {
     /// on `conn`.
     ///
     /// Every schema's query returns the columns the shared row reader expects
-    /// (`id`, `name`, `type`, `path`), so rows from any schema are read the
-    /// same way. A query may also return `fragment` (an anchor stored
-    /// separately from the path), and no other columns.
+    /// (`id`, `name`, `type`, `path`, `fragment`), so rows from any schema are
+    /// read the same way. `fragment` is an anchor stored separately from the
+    /// path; a schema without one returns it as `NULL`.
     ///
     /// # Errors
     ///
@@ -122,9 +122,14 @@ mod test {
         };
     }
 
-    fn detect_fixture_schema(sql: &str) -> Result<SchemaType, Error> {
+    fn fixture_conn(sql: &str) -> Connection {
         let conn = Connection::open_in_memory().unwrap();
         conn.execute_batch(sql).unwrap();
+        conn
+    }
+
+    fn detect_fixture_schema(sql: &str) -> Result<SchemaType, Error> {
+        let conn = fixture_conn(sql);
 
         let mut query = SchemaType::detect_schema(&conn).unwrap();
         let raw: i64 = query.query_one((), |r| r.get("schema_type")).unwrap();
@@ -188,35 +193,21 @@ mod test {
         assert_eq!(result, Error::InvalidSchema)
     }
 
-    fn entry_required_columns() -> HashSet<&'static str> {
-        HashSet::from(["id", "name", "type", "path"])
-    }
-
-    fn entry_optional_columns() -> HashSet<&'static str> {
-        HashSet::from(["fragment"])
-    }
-
     /// Asserts that an entry-reading query follows ADR-8's shared-reader
-    /// contract: it returns every column in [`entry_required_columns`], and
-    /// any other column it returns is in [`entry_optional_columns`].
+    /// contract: it returns exactly the columns the shared row reader reads
+    /// (`id`, `name`, `type`, `path`, `fragment`), no more and no fewer.
     macro_rules! assert_has_entry_columns {
         ($query:expr) => {
             let columns: HashSet<_> = $query.column_names().into_iter().collect();
-            let expected = entry_required_columns();
+            let expected = HashSet::from(["id", "name", "type", "path", "fragment"]);
 
-            assert!(columns.is_superset(&expected));
-
-            let extra_columns: HashSet<_> = columns.difference(&expected).copied().collect();
-            let expected_opt = entry_optional_columns();
-            assert!(extra_columns.is_subset(&expected_opt));
+            assert_eq!(columns, expected)
         };
     }
 
     #[test]
     fn reads_expected_cols_of_search_index_schema() {
-        let conn = Connection::open_in_memory().unwrap();
-        conn.execute_batch(fixture_db!("search_index/valid.sql"))
-            .unwrap();
+        let conn = fixture_conn(fixture_db!("search_index/valid.sql"));
 
         let query = SchemaType::SearchIndex.read_all(&conn).unwrap();
         assert_has_entry_columns!(query);
@@ -224,9 +215,7 @@ mod test {
 
     #[test]
     fn fails_to_read_expected_cols_of_invalid_search_index() {
-        let conn = Connection::open_in_memory().unwrap();
-        conn.execute_batch(fixture_db!("search_index/no_search_index.sql"))
-            .unwrap();
+        let conn = fixture_conn(fixture_db!("search_index/no_search_index.sql"));
 
         let err = SchemaType::SearchIndex.read_all(&conn).unwrap_err();
         std::assert_matches!(err, rusqlite::Error::SqliteFailure(_, _))
@@ -234,9 +223,7 @@ mod test {
 
     #[test]
     fn reads_expected_cols_of_valid_core_data_schema() {
-        let conn = Connection::open_in_memory().unwrap();
-        conn.execute_batch(fixture_db!("core_data/valid.sql"))
-            .unwrap();
+        let conn = fixture_conn(fixture_db!("core_data/valid.sql"));
 
         let query = SchemaType::CoreData.read_all(&conn).unwrap();
         assert_has_entry_columns!(query);
@@ -244,9 +231,7 @@ mod test {
 
     #[test]
     fn fails_to_read_expected_cols_of_invalid_core_data_schema() {
-        let conn = Connection::open_in_memory().unwrap();
-        conn.execute_batch(fixture_db!("core_data/missing_tables.sql"))
-            .unwrap();
+        let conn = fixture_conn(fixture_db!("core_data/missing_tables.sql"));
 
         let err = SchemaType::CoreData.read_all(&conn).unwrap_err();
         std::assert_matches!(err, rusqlite::Error::SqliteFailure(_, _))

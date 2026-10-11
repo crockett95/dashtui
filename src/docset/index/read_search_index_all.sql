@@ -3,6 +3,7 @@ SELECT
     s.id,
     s.name,
     s.type,
-    s.path
+    s.path,
+    NULL AS fragment
 FROM searchIndex AS s
 ORDER BY s.id;

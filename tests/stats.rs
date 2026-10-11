@@ -1,18 +1,14 @@
 use std::collections::BTreeMap;
 
-use dashtui::docset::{
-    Docset, DocsetError,
-    entry::{EntryError, EntryType},
-    index,
-};
+use dashtui::docset::{Docset, DocsetError, entry, entry::EntryType, index};
 use tempfile::tempdir;
 
-use crate::common::{FixtureDatabase, fixture_docset};
+use crate::common::{SearchIndexFixtureDb, fixture_docset};
 
 mod common;
 #[test]
 fn loads_stats_for_a_valid_index() {
-    let (_dir, docset) = fixture_docset(FixtureDatabase::Valid);
+    let (_dir, docset) = fixture_docset(SearchIndexFixtureDb::Valid);
     let counts = docset.load_stats().unwrap();
     assert_eq!(
         counts,
@@ -28,25 +24,25 @@ fn loads_stats_for_a_valid_index() {
 }
 #[test]
 fn returns_empty_stats_if_no_rows() {
-    let (_dir, docset) = fixture_docset(FixtureDatabase::EmptyTable);
+    let (_dir, docset) = fixture_docset(SearchIndexFixtureDb::EmptyTable);
     let counts = docset.load_stats().unwrap();
     assert_eq!(counts, BTreeMap::new())
 }
 #[test]
 fn returns_error_for_invalid_db() {
-    let (_dir, docset) = fixture_docset(FixtureDatabase::NoSearchIndex);
+    let (_dir, docset) = fixture_docset(SearchIndexFixtureDb::NoSearchIndex);
     let counts = docset.load_stats().unwrap_err();
     std::assert_matches!(counts, DocsetError::Index(index::Error::Database(_)))
 }
 #[test]
 fn returns_error_for_invalid_data() {
-    let (_dir, docset) = fixture_docset(FixtureDatabase::EmptyPath);
+    let (_dir, docset) = fixture_docset(SearchIndexFixtureDb::EmptyPath);
     let counts = docset.load_stats().unwrap_err();
     std::assert_matches!(
         counts,
         DocsetError::Index(index::Error::RowParse {
             id: 20,
-            entry_error: EntryError::EmptyPath
+            entry_error: entry::Error::EmptyPath
         })
     )
 }

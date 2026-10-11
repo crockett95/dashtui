@@ -6,34 +6,8 @@ use dashtui::docset::Docset;
 use rusqlite::Connection;
 use tempfile::TempDir;
 
-pub enum FixtureDatabase {
-    EmptyPath,
-    EmptyTable,
-    NoSearchIndex,
-    NullPath,
-    Valid,
-}
-
-impl FixtureDatabase {
-    fn sql(&self) -> &'static str {
-        match self {
-            FixtureDatabase::EmptyPath => {
-                include_str!("../fixtures/search_index/empty_path.sql")
-            }
-            FixtureDatabase::EmptyTable => {
-                include_str!("../fixtures/search_index/empty_table.sql")
-            }
-            FixtureDatabase::NoSearchIndex => {
-                include_str!("../fixtures/search_index/no_search_index.sql")
-            }
-            FixtureDatabase::NullPath => {
-                include_str!("../fixtures/search_index/null_path.sql")
-            }
-            FixtureDatabase::Valid => {
-                include_str!("../fixtures/search_index/valid.sql")
-            }
-        }
-    }
+pub trait FixtureDatabase {
+    fn sql(&self) -> &'static str;
 
     fn populate(&self, path: &Path) {
         let conn = Connection::open(path).unwrap();
@@ -47,19 +21,81 @@ impl FixtureDatabase {
     /// is deleted when the `TempDir` is dropped: callers must keep it alive for
     /// the whole test with `let (_dir, path) = ...`. Writing `let (_, path)`
     /// instead would drop it, and delete the file, immediately.
-    pub fn build(&self) -> (TempDir, PathBuf) {
+    fn build(&self) -> (TempDir, PathBuf) {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("docSet.dsidx");
         self.populate(&path);
         (dir, path)
     }
 
-    pub fn build_for_docset(&self, docset: &Docset) {
+    fn build_for_docset(&self, docset: &Docset) {
         self.populate(&docset.index_path());
     }
 }
 
-pub fn fixture_docset(index: FixtureDatabase) -> (TempDir, Docset) {
+pub enum SearchIndexFixtureDb {
+    EmptyPath,
+    EmptyTable,
+    NoSearchIndex,
+    NullPath,
+    Valid,
+}
+
+impl FixtureDatabase for SearchIndexFixtureDb {
+    fn sql(&self) -> &'static str {
+        match self {
+            Self::EmptyPath => {
+                include_str!("../fixtures/search_index/empty_path.sql")
+            }
+            Self::EmptyTable => {
+                include_str!("../fixtures/search_index/empty_table.sql")
+            }
+            Self::NoSearchIndex => {
+                include_str!("../fixtures/search_index/no_search_index.sql")
+            }
+            Self::NullPath => {
+                include_str!("../fixtures/search_index/null_path.sql")
+            }
+            Self::Valid => {
+                include_str!("../fixtures/search_index/valid.sql")
+            }
+        }
+    }
+}
+
+pub enum CoreDataFixtureDb {
+    DuplicateMeta,
+    EmptyName,
+    EmptyPath,
+    EmptyTable,
+    MissingFile,
+    MissingMeta,
+    MissingTables,
+    MissingType,
+    NullAnchor,
+    Valid,
+}
+
+impl FixtureDatabase for CoreDataFixtureDb {
+    fn sql(&self) -> &'static str {
+        match self {
+            Self::DuplicateMeta => {
+                include_str!("../fixtures/core_data/duplicate_metainformation.sql")
+            }
+            Self::EmptyName => include_str!("../fixtures/core_data/empty_name.sql"),
+            Self::EmptyPath => include_str!("../fixtures/core_data/empty_path.sql"),
+            Self::EmptyTable => include_str!("../fixtures/core_data/empty_table.sql"),
+            Self::MissingFile => include_str!("../fixtures/core_data/missing_file.sql"),
+            Self::MissingMeta => include_str!("../fixtures/core_data/missing_metainformation.sql"),
+            Self::MissingTables => include_str!("../fixtures/core_data/missing_tables.sql"),
+            Self::MissingType => include_str!("../fixtures/core_data/missing_type.sql"),
+            Self::NullAnchor => include_str!("../fixtures/core_data/null_anchor.sql"),
+            Self::Valid => include_str!("../fixtures/core_data/valid.sql"),
+        }
+    }
+}
+
+pub fn fixture_docset(index: impl FixtureDatabase) -> (TempDir, Docset) {
     let dir = tempfile::tempdir().unwrap();
     let docset = Docset {
         path: dir.path().to_path_buf(),
