@@ -138,9 +138,9 @@ the schemas differ only in their SQL. Row validation and errors are written
 once. Loading everything is cheap (13,801 rows read and counted in 9 ms; the
 largest local index, 59,956 rows, queries in under 100 ms), counts must use
 normalized `EntryType`s (ADR-7), and fuzzy ranking can't be expressed in SQL,
-so search runs in memory regardless. Letting the schema own preparation keeps room to
-change how a query is prepared (`prepare_cached`, choosing or building SQL from
-the operation's inputs) without touching callers. The set of schemas is
+so search runs in memory regardless. Letting the schema own preparation keeps
+room to change how a query is prepared (`prepare_cached`, choosing or building
+SQL from the operation's inputs) without touching callers. The set of schemas is
 closed (nothing outside the crate adds one), so `match` on `SchemaType` checks
 every schema is handled, and a third schema is one new variant plus one query
 per operation.
@@ -151,6 +151,7 @@ different Rust logic, not just different SQL, or if per-schema `match`es
 spread across many modules. Also rejected: a query per operation from the
 start (`GROUP BY` for stats, `LIKE` for search), which can't rank fuzzy
 matches and would normalize entry types in SQL. Also rejected: schema methods
-returning the SQL text, which is equally short but leaves every caller responsible for
-preparing, so a change in how queries are prepared touches every operation;
-and returning `Rows`, which can't outlive the `Statement` it borrows.
+returning the SQL text, which is equally short but leaves every caller
+responsible for preparing, so a change in how queries are prepared touches
+every operation; and returning `Rows`, which can't outlive the `Statement` it
+borrows.
