@@ -91,6 +91,11 @@ impl Entry {
         &self.kind
     }
 
+    /// The entry's name
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
     /// Builds a test fixture Entry with a specified type
     ///
     /// Builds a placeholder Entry fixture with a specified [`EntryType`] and

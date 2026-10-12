@@ -44,19 +44,19 @@ fn main() -> Result<()> {
         } => {
             let docsets = find_docsets(&root_dir)?
                 .into_iter()
-                .filter(|d| include_broken || d.meta.is_some())
+                .filter(|d| include_broken || d.meta().is_some())
                 .collect();
             if cli.json {
                 let json = serde_json::to_string(&DiscoveryView { docsets })?;
                 println!("{}", json);
             } else {
                 for docset in docsets.iter() {
-                    let name = if let Some(meta) = &docset.meta {
+                    let name = if let Some(meta) = docset.meta() {
                         &meta.name
                     } else {
                         ""
                     };
-                    println!("{}\t{}", name, docset.path.to_string_lossy());
+                    println!("{}\t{}", name, docset.path().to_string_lossy());
                 }
             }
         }

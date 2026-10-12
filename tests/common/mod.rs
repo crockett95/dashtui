@@ -97,10 +97,7 @@ impl FixtureDatabase for CoreDataFixtureDb {
 
 pub fn fixture_docset(index: impl FixtureDatabase) -> (TempDir, Docset) {
     let dir = tempfile::tempdir().unwrap();
-    let docset = Docset {
-        path: dir.path().to_path_buf(),
-        meta: None,
-    };
+    let docset = Docset::from((dir.path().to_path_buf(), None));
     std::fs::create_dir_all(docset.index_path().parent().unwrap())
         .expect("Failed to create index dir");
     index.build_for_docset(&docset);

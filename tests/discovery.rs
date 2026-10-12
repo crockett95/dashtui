@@ -14,7 +14,7 @@ fn finds_docsets_recursively() {
     let found = find_docsets(&root).unwrap();
     let mut paths: Vec<PathBuf> = found
         .iter()
-        .map(|d: &Docset| PathBuf::from(&d.path))
+        .map(|d: &Docset| d.path().to_path_buf())
         .collect();
     paths.sort();
 
@@ -36,10 +36,11 @@ fn does_not_descend_into_a_found_docset() {
     let root = fixture("docsets_root");
     let found = find_docsets(&root).unwrap();
 
-    assert!(!found.contains(&Docset {
-        path: root.join("Bash.docset/FakeNested.docset").to_owned(),
-        meta: None
-    }));
+    assert!(
+        !found
+            .iter()
+            .any(|docset| docset.path().ends_with("FakeNested.docset"))
+    );
 }
 
 #[test]

@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use dashtui::docset::{Docset, DocsetError, entry, entry::EntryType, index};
+use dashtui::docset::{Docset, Error, entry, entry::EntryType, index};
 use tempfile::tempdir;
 
 use crate::common::{SearchIndexFixtureDb, fixture_docset};
@@ -32,7 +32,13 @@ fn returns_empty_stats_if_no_rows() {
 fn returns_error_for_invalid_db() {
     let (_dir, docset) = fixture_docset(SearchIndexFixtureDb::NoSearchIndex);
     let counts = docset.load_stats().unwrap_err();
-    std::assert_matches!(counts, DocsetError::Index(index::Error::Database(_)))
+    std::assert_matches!(
+        counts,
+        Error::Index {
+            index_error: index::Error::Database(_),
+            path: _
+        }
+    )
 }
 #[test]
 fn returns_error_for_invalid_data() {
@@ -40,19 +46,25 @@ fn returns_error_for_invalid_data() {
     let counts = docset.load_stats().unwrap_err();
     std::assert_matches!(
         counts,
-        DocsetError::Index(index::Error::RowParse {
-            id: 20,
-            entry_error: entry::Error::EmptyPath
-        })
+        Error::Index {
+            index_error: index::Error::RowParse {
+                id: 20,
+                entry_error: entry::Error::EmptyPath
+            },
+            path: _
+        }
     )
 }
 #[test]
 fn return_error_if_no_index() {
     let dir = tempdir().unwrap();
-    let docset = Docset {
-        path: dir.path().to_path_buf(),
-        meta: None,
-    };
+    let docset = Docset::from((dir.path().to_path_buf(), None));
     let counts = docset.load_stats().unwrap_err();
-    std::assert_matches!(counts, DocsetError::Index(index::Error::Database(_)))
+    std::assert_matches!(
+        counts,
+        Error::Index {
+            index_error: index::Error::Database(_),
+            path: _
+        }
+    )
 }

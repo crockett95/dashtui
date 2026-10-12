@@ -46,10 +46,7 @@ mod test {
     #[test]
     fn serializes_a_path() {
         let dut = DiscoveryView {
-            docsets: vec![Docset {
-                path: PathBuf::from("./docset/"),
-                meta: None,
-            }],
+            docsets: vec![Docset::from((PathBuf::from("./docset/"), None))],
         };
         let serialized = serde_json::to_string(&dut);
         assert_eq!(
@@ -61,15 +58,15 @@ mod test {
     #[test]
     fn serializes_metadata() {
         let dut = DiscoveryView {
-            docsets: vec![Docset {
-                path: PathBuf::from("./docset/"),
-                meta: Some(DocsetMeta {
+            docsets: vec![Docset::from((
+                PathBuf::from("./docset/"),
+                Some(DocsetMeta {
                     name: "Foo".to_owned(),
                     id: "foo".to_owned(),
                     platform_family: "foo".to_owned(),
                     index_file: None,
                 }),
-            }],
+            ))],
         };
         let serialized = serde_json::to_string(&dut);
         assert_eq!(
@@ -132,10 +129,7 @@ mod test {
 
     #[test]
     fn stats_serializes_with_its_docset() {
-        let docset = Docset {
-            path: PathBuf::from("path/To.docset"),
-            meta: None,
-        };
+        let docset = Docset::from((PathBuf::from("path/To.docset"), None));
         let counts = BTreeMap::from([(EntryType::Function, 1), (EntryType::Guide, 3)]);
 
         let json = serde_json::to_string(&StatsView { docset, counts }).unwrap();
