@@ -6,6 +6,8 @@ use std::io;
 use std::io::ErrorKind::{NotADirectory, NotFound};
 use std::path::{Path, PathBuf};
 
+use nucleo_matcher::pattern::{AtomKind, CaseMatching, Normalization, Pattern};
+use nucleo_matcher::{Config, Matcher};
 // TODO Use std::OnceCell when get_or_try_init is stable
 use once_cell::sync::OnceCell;
 use serde::Serialize;
@@ -75,12 +77,21 @@ impl Docset {
         Ok(count_types(index))
     }
 
-    /// Finds the entries whose name contains `query`, ignoring case.
+    /// Finds the entries whose name fuzzy-matches `query`, best match first.
     ///
-    /// Only an entry's name is matched, never its path. Case is compared
-    /// using Unicode lowercasing, so non-ASCII names match too (`ärger` finds
-    /// `Ärger`). An empty query matches every entry. Results are in index
-    /// order and borrow from this `Docset`.
+    /// Matching is fzf-style, done by `nucleo-matcher`: an entry matches if
+    /// the query's characters appear in its name in order, not necessarily
+    /// next to each other (`rdarr` finds `readarray`). Only an entry's name is
+    /// matched, never its path.
+    ///
+    /// Case is smart: an all-lowercase query ignores case, and a query with
+    /// any uppercase letter is case-sensitive (`READ` finds `READLINE_LINE`
+    /// but not `read`). Ignoring case covers non-ASCII letters too, so `ärger`
+    /// finds `Ärger`.
+    ///
+    /// Results are ordered by match score, highest first, with tied scores
+    /// left in index order. An empty query matches every entry, in index
+    /// order. Results borrow from this `Docset`.
     ///
     /// Loads the index on first use and caches its entries, so later calls,
     /// including [`Docset::load_stats`], don't read the file again.
@@ -92,11 +103,15 @@ impl Docset {
     /// valid entry. A failed load isn't cached, so the next call tries again.
     pub fn search(&self, query: &str) -> Result<Vec<&Entry>, Error> {
         let entries = self.load_index()?;
-        let query = query.to_lowercase();
-        Ok(entries
-            .iter()
-            .filter(|&entry| entry.name().to_lowercase().contains(&query))
-            .collect())
+        let mut matcher = Matcher::new(Config::DEFAULT);
+        let matches = Pattern::new(
+            query,
+            CaseMatching::Smart,
+            Normalization::Smart,
+            AtomKind::Fuzzy,
+        )
+        .match_list(entries, &mut matcher);
+        Ok(matches.into_iter().map(|(a, _)| a).collect())
     }
 
     /// The docset's entries, reading the index on the first successful call.
@@ -254,8 +269,8 @@ mod test {
 
         /// A docset with entries already loaded, so no index file is needed.
         ///
-        /// Names are mostly real Bash.docset entries, chosen so one substring
-        /// can hit several of them in different cases (`read`, `READ`,
+        /// Names are mostly real Bash.docset entries, chosen so one query can
+        /// hit several of them in different cases (`read`, `READLINE_LINE`,
         /// `readarray`). `printf` has `read` in its path but not its name.
         /// `Ärger` is non-ASCII, `abort (C-g)` has spaces and punctuation, and
         /// `:`, `!`, `-` are real single-symbol names.
@@ -284,10 +299,10 @@ mod test {
         }
 
         #[test]
-        fn matches_uppercase_query_against_any_case() {
+        fn matches_uppercase_query_against_uppercase() {
             let docset = docset();
             let hits = names(&docset.search("READ").unwrap());
-            let expected = ["read", "READLINE_LINE", "readarray"];
+            let expected = ["READLINE_LINE"];
             assert_eq!(hits, expected)
         }
 
@@ -296,6 +311,14 @@ mod test {
             let docset = docset();
             let hits = names(&docset.search("LINE").unwrap());
             let expected = ["READLINE_LINE"];
+            assert_eq!(hits, expected)
+        }
+
+        #[test]
+        fn fuzzy_matches_entry_name() {
+            let docset = docset();
+            let hits = names(&docset.search("rdarr").unwrap());
+            let expected = ["readarray"];
             assert_eq!(hits, expected)
         }
 

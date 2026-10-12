@@ -111,6 +111,12 @@ impl Entry {
     }
 }
 
+impl AsRef<str> for Entry {
+    fn as_ref(&self) -> &str {
+        self.name()
+    }
+}
+
 impl TryFrom<(&str, &str, &str, Option<&str>)> for Entry {
     type Error = Error;
 
