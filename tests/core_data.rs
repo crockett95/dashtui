@@ -8,7 +8,7 @@ use dashtui::docset::{
 use crate::common::{CoreDataFixtureDb, FixtureDatabase};
 
 /// `core_data/valid.sql`: three real Lua rows come back in token-id order, with
-/// `func` normalized to `Function` and each anchor in `fragment`.
+/// `func` normalized to `Function` and each row's own anchor.
 #[test]
 fn reads_every_row_of_a_valid_index() {
     let (_dir, path) = CoreDataFixtureDb::Valid.build();
@@ -169,9 +169,9 @@ fn errors_if_missing_type() {
 }
 
 /// `core_data/null_anchor.sql`: two real CSS rows with a NULL `ZANCHOR` are
-/// valid entries with `fragment: None`.
+/// valid entries with `anchor: None`.
 #[test]
-fn uses_none_for_missing_fragment() {
+fn uses_none_for_missing_anchor() {
     let (_dir, path) = CoreDataFixtureDb::NullAnchor.build();
     let entries = read_entries(&path).unwrap();
     let expected = [

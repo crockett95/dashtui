@@ -1,5 +1,5 @@
 -- Token 20 has no `ZTOKENMETAINFORMATION` row, so it has no file. The LEFT JOIN
--- keeps the row with a NULL `path` (and `fragment`).
+-- keeps the row with a NULL `path` (and `anchor`).
 -- Expected: a row-read error for id 20, not a silently dropped row.
 CREATE TABLE ZTOKEN (
     Z_PK INTEGER PRIMARY KEY, ZTOKENTYPE INTEGER, ZTOKENNAME VARCHAR

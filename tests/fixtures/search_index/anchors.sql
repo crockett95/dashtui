@@ -1,5 +1,5 @@
 -- Real rows from SQLite.docset, verbatim, covering `#` anchors.
--- Expected (path, fragment) after reading, in id order:
+-- Expected (path, anchor) after reading, in id order:
 --   8    one `#` ("sqlite/printf.html", "percentq")
 --   2695 `##` splits at the first `#` ("sqlite/fileformat2.html", "#sqltab")
 CREATE TABLE searchIndex (

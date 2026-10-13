@@ -72,8 +72,8 @@ pub fn read_entries(index_path: &Path) -> Result<Vec<Entry>, Error> {
 
 /// Reads a single docset database row into an [`Entry`].
 ///
-/// Expects a row with `id`, `name`, `type`, `path`, and `fragment` columns, the
-/// shape every schema's read-all query returns (ADR-8). `fragment` may be
+/// Expects a row with `id`, `name`, `type`, `path`, and `anchor` columns, the
+/// shape every schema's read-all query returns (ADR-8). `anchor` may be
 /// `NULL`; the other columns may not. Calls [`Entry::try_from`] with the
 /// resultant values.
 ///
@@ -91,13 +91,13 @@ fn read_entry_row(row: &Row<'_>) -> Result<Entry, Error> {
     let name: String = row.get("name").map_err(row_err)?;
     let entry_type: String = row.get("type").map_err(row_err)?;
     let path: String = row.get("path").map_err(row_err)?;
-    let fragment: Option<String> = row.get("fragment").map_err(row_err)?;
+    let anchor: Option<String> = row.get("anchor").map_err(row_err)?;
 
     Entry::try_from((
         name.as_str(),
         entry_type.as_str(),
         path.as_str(),
-        fragment.as_deref(),
+        anchor.as_deref(),
     ))
     .map_err(|entry_error| Error::RowParse { id, entry_error })
 }

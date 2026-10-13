@@ -3,7 +3,7 @@ use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
 use dashtui::docset::{Docset, find_docsets};
-use dashtui::json::{DiscoveryView, StatsView};
+use dashtui::json::{DiscoveryView, SearchView, StatsView};
 
 #[derive(Debug, Parser)]
 /// dashtui: Dash docs for the terminal
@@ -11,6 +11,7 @@ struct Cli {
     #[command(subcommand)]
     command: Command,
 
+    /// Return the result as JSON
     #[arg(long, global = true)]
     json: bool,
 }
@@ -28,9 +29,25 @@ enum Command {
         #[arg(long)]
         include_broken: bool,
     },
+    /// Show the counts for each entry type found in the docset
+    ///
+    /// Prints every entry type found in the docset along with the total
+    /// count of entries matching that type
     Stats {
         /// Docset directory
         docset_dir: PathBuf,
+    },
+    /// Search a docset for entries matching the query
+    ///
+    /// Returns the top entries from the docset matching query
+    Search {
+        /// Docset directory
+        docset_dir: PathBuf,
+        /// Search query
+        query: String,
+        /// Maximum number of entries to return
+        #[arg(long, default_value_t = 20)]
+        limit: usize,
     },
 }
 
@@ -56,7 +73,7 @@ fn main() -> Result<()> {
                     } else {
                         ""
                     };
-                    println!("{}\t{}", name, docset.path().to_string_lossy());
+                    println!("{}\t{}", name, docset.path().display());
                 }
             }
         }
@@ -69,6 +86,34 @@ fn main() -> Result<()> {
             } else {
                 for (key, count) in counts.iter() {
                     println!("{:<12}{:>5}", key, count);
+                }
+            }
+        }
+        Command::Search {
+            docset_dir,
+            query,
+            limit,
+        } => {
+            let docset = Docset::load(docset_dir);
+            let mut results = docset.search(&query)?;
+            results.truncate(limit);
+            if cli.json {
+                let json = serde_json::to_string(&SearchView {
+                    docset: &docset,
+                    query: &query,
+                    results,
+                })?;
+                println!("{}", json);
+            } else {
+                println!("Results for '{}' in {}", query, docset.path().display());
+                println!("{:<50}\t{:<12}\tPath (with Anchor)", "Name", "Type");
+                for entry in results {
+                    let path = if let Some(anchor) = entry.anchor() {
+                        format!("{}#{}", entry.path(), anchor)
+                    } else {
+                        entry.path().to_string()
+                    };
+                    println!("{:<50}\t{:<12}\t{}", entry.name(), entry.kind(), path);
                 }
             }
         }
@@ -114,6 +159,40 @@ mod test {
     #[test]
     fn stats_fails_if_no_dir() {
         let result = Cli::try_parse_from(["dashtui", "stats"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn search_subcommand_parsing() {
+        assert_eq!(
+            Cli::try_parse_from(["dashtui", "search", "some/dir", "query"])
+                .expect("Test failed")
+                .command,
+            Command::Search {
+                docset_dir: PathBuf::from("some/dir"),
+                query: String::from("query"),
+                limit: 20
+            }
+        )
+    }
+
+    #[test]
+    fn search_subcommand_parsing_takes_limit() {
+        assert_eq!(
+            Cli::try_parse_from(["dashtui", "search", "--limit", "40", "some/dir", "query"])
+                .expect("Test failed")
+                .command,
+            Command::Search {
+                docset_dir: PathBuf::from("some/dir"),
+                query: String::from("query"),
+                limit: 40
+            }
+        )
+    }
+
+    #[test]
+    fn search_fails_if_no_query() {
+        let result = Cli::try_parse_from(["dashtui", "search", "some/dir"]);
         assert!(result.is_err());
     }
 }

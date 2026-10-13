@@ -2,7 +2,10 @@ use std::collections::BTreeMap;
 
 use serde::Serialize;
 
-use crate::docset::{Docset, entry::EntryType};
+use crate::docset::{
+    Docset,
+    entry::{Entry, EntryType},
+};
 
 #[derive(Debug, Serialize)]
 pub struct DiscoveryView {
@@ -13,6 +16,13 @@ pub struct DiscoveryView {
 pub struct StatsView {
     pub docset: Docset,
     pub counts: BTreeMap<EntryType, usize>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SearchView<'a> {
+    pub docset: &'a Docset,
+    pub query: &'a str,
+    pub results: Vec<&'a Entry>,
 }
 
 impl Serialize for EntryType {
@@ -40,7 +50,7 @@ mod test {
         let dut = DiscoveryView { docsets: vec![] };
         let serialized = serde_json::to_string(&dut);
         assert!(serialized.is_ok());
-        assert_eq!("{\"docsets\":[]}", serialized.unwrap());
+        assert_eq!(r#"{"docsets":[]}"#, serialized.unwrap());
     }
 
     #[test]
@@ -49,10 +59,7 @@ mod test {
             docsets: vec![Docset::from((PathBuf::from("./docset/"), None))],
         };
         let serialized = serde_json::to_string(&dut);
-        assert_eq!(
-            "{\"docsets\":[{\"path\":\"./docset/\"}]}",
-            serialized.unwrap()
-        );
+        assert_eq!(r#"{"docsets":[{"path":"./docset/"}]}"#, serialized.unwrap());
     }
 
     #[test]
@@ -70,7 +77,7 @@ mod test {
         };
         let serialized = serde_json::to_string(&dut);
         assert_eq!(
-            "{\"docsets\":[{\"path\":\"./docset/\",\"id\":\"foo\",\"name\":\"Foo\",\"platform_family\":\"foo\",\"index_file\":null}]}",
+            r#"{"docsets":[{"path":"./docset/","id":"foo","name":"Foo","platform_family":"foo","index_file":null}]}"#,
             serialized.unwrap()
         );
     }
@@ -134,8 +141,46 @@ mod test {
 
         let json = serde_json::to_string(&StatsView { docset, counts }).unwrap();
         assert_eq!(
-            "{\"docset\":{\"path\":\"path/To.docset\"},\"counts\":{\"Function\":1,\"Guide\":3}}",
+            r#"{"docset":{"path":"path/To.docset"},"counts":{"Function":1,"Guide":3}}"#,
             json
         );
+    }
+
+    #[test]
+    fn entry_serializes_with_anchor() {
+        let entry = Entry::try_from(("name", "type", "path/to/docs", Some("anchor"))).unwrap();
+        let json = serde_json::to_string(&entry).unwrap();
+        assert_eq!(
+            json,
+            r#"{"name":"name","type":"type","path":"path/to/docs","anchor":"anchor"}"#
+        )
+    }
+
+    #[test]
+    fn entry_serializes_without_anchor() {
+        let entry = Entry::try_from(("name", "type", "path/to/docs", None)).unwrap();
+        let json = serde_json::to_string(&entry).unwrap();
+        assert_eq!(
+            json,
+            r#"{"name":"name","type":"type","path":"path/to/docs","anchor":null}"#
+        )
+    }
+
+    #[test]
+    fn search_view_serializes_with_docset_and_query() {
+        let entry1 = Entry::try_from(("result1", "func", "path/to/docs", None)).unwrap();
+        let entry2 = Entry::try_from(("result2", "type", "path/to/other", Some("anchor"))).unwrap();
+        let docset = Docset::from((PathBuf::from("path/to/docset"), None));
+        let results = SearchView {
+            docset: &docset,
+            query: "res",
+            results: vec![&entry1, &entry2],
+        };
+
+        let json = serde_json::to_string(&results).unwrap();
+        assert_eq!(
+            json,
+            r#"{"docset":{"path":"path/to/docset"},"query":"res","results":[{"name":"result1","type":"Function","path":"path/to/docs","anchor":null},{"name":"result2","type":"type","path":"path/to/other","anchor":"anchor"}]}"#
+        )
     }
 }

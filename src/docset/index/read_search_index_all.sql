@@ -11,6 +11,6 @@ SELECT
     END AS path,
     CASE
         WHEN instr(s.path, '#') THEN substring(s.path, instr(s.path, '#') + 1)
-    END AS fragment
+    END AS anchor
 FROM searchIndex AS s
 ORDER BY s.id;

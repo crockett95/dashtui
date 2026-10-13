@@ -1,6 +1,7 @@
-use std::{path::Path, sync::LazyLock};
+use std::sync::LazyLock;
 
 use regex::Regex;
+use serde::Serialize;
 
 /// The kind of a docset entry, as recorded in the docset's own index.
 ///
@@ -62,9 +63,10 @@ impl From<&str> for EntryType {
 
 /// A single row from a docset's index: one named, typed location in its
 /// HTML documentation.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Entry {
     name: String,
+    #[serde(rename(serialize = "type"))]
     kind: EntryType,
     /// The page path from the index, with any leading Dash `<dash_entry_*>`
     /// markers and the `#anchor` removed.
@@ -73,7 +75,7 @@ pub struct Entry {
     /// Data stores it separately (`ZANCHOR`); for SearchIndex it is
     /// everything after the first `#` in the recorded path, so `page.html##id`
     /// gives `#id`. `None` when the entry has no anchor.
-    fragment: Option<String>,
+    anchor: Option<String>,
 }
 
 /// Why a raw `(name, type, path)` index row could not become an `Entry`.
@@ -101,8 +103,14 @@ impl Entry {
     }
 
     /// The entry's page path, without markers or anchor.
-    pub fn path(&self) -> &Path {
-        Path::new(&self.path)
+    pub fn path(&self) -> &str {
+        &self.path
+    }
+
+    /// The anchor within the entry's page (see [`Entry::path`]), without the
+    /// leading `#`; `None` if the entry points at the page itself.
+    pub fn anchor(&self) -> Option<&str> {
+        self.anchor.as_deref()
     }
 
     /// Builds a test fixture Entry with a specified type
@@ -115,7 +123,7 @@ impl Entry {
             name: String::from("name"),
             kind,
             path: String::from("path"),
-            fragment: None,
+            anchor: None,
         }
     }
 }
@@ -133,9 +141,9 @@ static PATH_REGEX: LazyLock<Regex> = LazyLock::new(|| {
 impl TryFrom<(&str, &str, &str, Option<&str>)> for Entry {
     type Error = Error;
 
-    /// Converts a raw `(name, type, path, fragment)` index row into an `Entry`.
+    /// Converts a raw `(name, type, path, anchor)` index row into an `Entry`.
     ///
-    /// `path` must already have its `#anchor` split off into `fragment`. Any
+    /// `path` must already have its `#anchor` split off into `anchor`. Any
     /// leading `<...>` groups on `path` are Dash metadata markers (such as
     /// `<dash_entry_name=...>`) and are removed; their values are discarded.
     /// `<` and `>` can't appear unencoded in a real page path, so a leading
@@ -145,10 +153,10 @@ impl TryFrom<(&str, &str, &str, Option<&str>)> for Entry {
     ///
     /// Returns [`Error::EmptyName`] if `name` is empty, or
     /// [`Error::EmptyPath`] if `path` is empty once markers are removed, so a
-    /// path made only of markers is rejected. `fragment` never fails: `None`
+    /// path made only of markers is rejected. `anchor` never fails: `None`
     /// and any string are both accepted.
     fn try_from(
-        (name, raw_type, path, fragment): (&str, &str, &str, Option<&str>),
+        (name, raw_type, path, anchor): (&str, &str, &str, Option<&str>),
     ) -> Result<Self, Self::Error> {
         if name.is_empty() {
             return Err(Error::EmptyName);
@@ -162,7 +170,7 @@ impl TryFrom<(&str, &str, &str, Option<&str>)> for Entry {
                 name: name.to_owned(),
                 path,
                 kind: EntryType::from(raw_type),
-                fragment: fragment.map(String::from),
+                anchor: anchor.map(String::from),
             })
         } else {
             Err(Error::EmptyPath)
@@ -180,7 +188,7 @@ mod test {
         assert_eq!(entry.name, "foo");
         assert_eq!(entry.kind, EntryType::Function);
         assert_eq!(entry.path, "baz");
-        assert_eq!(entry.fragment.as_deref(), Some("quux"))
+        assert_eq!(entry.anchor.as_deref(), Some("quux"))
     }
 
     #[test]
@@ -196,9 +204,9 @@ mod test {
     }
 
     #[test]
-    fn none_fragment_is_not_rejected() {
+    fn none_anchor_is_not_rejected() {
         let entry = Entry::try_from(("foo", "bar", "baz", None)).unwrap();
-        assert_eq!(entry.fragment, None);
+        assert_eq!(entry.anchor, None);
     }
 
     #[test]
@@ -306,9 +314,7 @@ mod test {
 
         assert_eq!(
             entry.path(),
-            Path::new(
-                "developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Roles/structural_roles.html"
-            )
+            "developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Roles/structural_roles.html"
         )
     }
 

@@ -65,9 +65,9 @@ impl SchemaType {
     /// on `conn`.
     ///
     /// Every schema's query returns the columns the shared row reader expects
-    /// (`id`, `name`, `type`, `path`, `fragment`), so rows from any schema are
-    /// read the same way. `fragment` is an anchor stored separately from the
-    /// path; a schema without one returns it as `NULL`.
+    /// (`id`, `name`, `type`, `path`, `anchor`), so rows from any schema are
+    /// read the same way. `path` is the page and `anchor` the part after its
+    /// `#`, already separated; `anchor` is `NULL` for an entry without one.
     ///
     /// # Errors
     ///
@@ -197,11 +197,11 @@ mod test {
 
     /// Asserts that an entry-reading query follows ADR-8's shared-reader
     /// contract: it returns exactly the columns the shared row reader reads
-    /// (`id`, `name`, `type`, `path`, `fragment`), no more and no fewer.
+    /// (`id`, `name`, `type`, `path`, `anchor`), no more and no fewer.
     macro_rules! assert_has_entry_columns {
         ($query:expr) => {
             let columns: HashSet<_> = $query.column_names().into_iter().collect();
-            let expected = HashSet::from(["id", "name", "type", "path", "fragment"]);
+            let expected = HashSet::from(["id", "name", "type", "path", "anchor"]);
 
             assert_eq!(columns, expected)
         };
@@ -247,7 +247,7 @@ mod test {
         let rows: Vec<(String, String)> = statement
             .query(())
             .unwrap()
-            .map(|r| Ok((r.get_unwrap("path"), r.get_unwrap("fragment"))))
+            .map(|r| Ok((r.get_unwrap("path"), r.get_unwrap("anchor"))))
             .unwrap()
             .collect();
         let expected = [

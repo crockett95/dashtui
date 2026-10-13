@@ -5,7 +5,7 @@ SELECT
     T.ZTOKENNAME AS name,
     TT.ZTYPENAME AS type,
     F.ZPATH AS path,
-    M.ZANCHOR AS fragment
+    M.ZANCHOR AS anchor
 FROM ZTOKEN AS T
 -- Left outer joins allow dealing with failed joins in code
 LEFT OUTER JOIN ZTOKENMETAINFORMATION AS M ON T.Z_PK = M.ZTOKEN
