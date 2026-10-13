@@ -1,3 +1,7 @@
+use std::{path::Path, sync::LazyLock};
+
+use regex::Regex;
+
 /// The kind of a docset entry, as recorded in the docset's own index.
 ///
 /// A docset's index has no fixed, machine-checkable vocabulary for entry
@@ -62,13 +66,13 @@ impl From<&str> for EntryType {
 pub struct Entry {
     name: String,
     kind: EntryType,
-    /// The raw path exactly as recorded in the index. May still carry a
-    /// `#anchor` fragment or a Dash `<dash_entry_*>` marker -- turning this
-    /// into an actual filesystem path plus anchor is M10's job, not this one's.
+    /// The page path from the index, with any leading Dash `<dash_entry_*>`
+    /// markers and the `#anchor` removed.
     path: String,
-    /// The anchor, when the index stores it separately from `path` (Core
-    /// Data's `ZANCHOR`), exactly as recorded. `None` when the index has none
-    /// for this entry, or keeps anchors inside `path` instead (SearchIndex).
+    /// The anchor within the page, without the `#` that introduces it. Core
+    /// Data stores it separately (`ZANCHOR`); for SearchIndex it is
+    /// everything after the first `#` in the recorded path, so `page.html##id`
+    /// gives `#id`. `None` when the entry has no anchor.
     fragment: Option<String>,
 }
 
@@ -96,6 +100,11 @@ impl Entry {
         &self.name
     }
 
+    /// The entry's page path, without markers or anchor.
+    pub fn path(&self) -> &Path {
+        Path::new(&self.path)
+    }
+
     /// Builds a test fixture Entry with a specified type
     ///
     /// Builds a placeholder Entry fixture with a specified [`EntryType`] and
@@ -117,15 +126,26 @@ impl AsRef<str> for Entry {
     }
 }
 
+static PATH_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new("^(?<meta>(?:<[^>]*>)*)(?<path>.*)$").expect("Path/metamarker regex invalid")
+});
+
 impl TryFrom<(&str, &str, &str, Option<&str>)> for Entry {
     type Error = Error;
 
     /// Converts a raw `(name, type, path, fragment)` index row into an `Entry`.
     ///
+    /// `path` must already have its `#anchor` split off into `fragment`. Any
+    /// leading `<...>` groups on `path` are Dash metadata markers (such as
+    /// `<dash_entry_name=...>`) and are removed; their values are discarded.
+    /// `<` and `>` can't appear unencoded in a real page path, so a leading
+    /// `<...>` is never part of one.
+    ///
     /// # Errors
     ///
     /// Returns [`Error::EmptyName`] if `name` is empty, or
-    /// [`Error::EmptyPath`] if `path` is empty. `fragment` never fails: `None`
+    /// [`Error::EmptyPath`] if `path` is empty once markers are removed, so a
+    /// path made only of markers is rejected. `fragment` never fails: `None`
     /// and any string are both accepted.
     fn try_from(
         (name, raw_type, path, fragment): (&str, &str, &str, Option<&str>),
@@ -133,15 +153,20 @@ impl TryFrom<(&str, &str, &str, Option<&str>)> for Entry {
         if name.is_empty() {
             return Err(Error::EmptyName);
         }
-        if path.is_empty() {
-            return Err(Error::EmptyPath);
+        if let Some(parts) = PATH_REGEX.captures(path)
+            && !parts["path"].is_empty()
+        {
+            let path = parts["path"].to_string();
+            // TODO:consume parts["meta"]
+            Ok(Self {
+                name: name.to_owned(),
+                path,
+                kind: EntryType::from(raw_type),
+                fragment: fragment.map(String::from),
+            })
+        } else {
+            Err(Error::EmptyPath)
         }
-        Ok(Self {
-            name: name.to_owned(),
-            path: path.to_owned(),
-            kind: EntryType::from(raw_type),
-            fragment: fragment.map(String::from),
-        })
     }
 }
 
@@ -267,5 +292,34 @@ mod test {
             "second",
             EntryType::Other(String::from("second")).to_string()
         );
+    }
+
+    #[test]
+    fn entry_try_from_removes_path_markers() {
+        let path = concat!(
+            "<dash_entry_name=document structural>",
+            "<dash_entry_originalName=document structural>",
+            "<dash_entry_menuDescription=document structural>",
+            "developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Roles/structural_roles.html"
+        );
+        let entry = Entry::try_from(("document structural", "Role", path, None)).unwrap();
+
+        assert_eq!(
+            entry.path(),
+            Path::new(
+                "developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Roles/structural_roles.html"
+            )
+        )
+    }
+
+    #[test]
+    fn path_with_only_markers_is_empty() {
+        let path = concat!(
+            "<dash_entry_name=document structural>",
+            "<dash_entry_originalName=document structural>",
+            "<dash_entry_menuDescription=document structural>",
+        );
+        let error = Entry::try_from(("document structural", "Role", path, None)).unwrap_err();
+        std::assert_matches!(error, Error::EmptyPath);
     }
 }

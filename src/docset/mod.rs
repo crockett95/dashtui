@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 
 use nucleo_matcher::pattern::{AtomKind, CaseMatching, Normalization, Pattern};
 use nucleo_matcher::{Config, Matcher};
-// TODO Use std::OnceCell when get_or_try_init is stable
+// TODO:Use std::OnceCell when get_or_try_init is stable
 use once_cell::sync::OnceCell;
 use serde::Serialize;
 
@@ -153,7 +153,7 @@ impl Docset {
         let meta = match DocsetMeta::load(&path) {
             Ok(meta) => Some(meta),
             Err(err) => {
-                // TODO: Replace with real logging
+                // TODO:Replace with real logging
                 eprintln!(
                     "Error reading metadata for {}: {}",
                     path.to_string_lossy(),

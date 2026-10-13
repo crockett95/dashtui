@@ -36,6 +36,7 @@ pub trait FixtureDatabase {
 pub enum SearchIndexFixtureDb {
     EmptyPath,
     EmptyTable,
+    Anchors,
     NoSearchIndex,
     NullPath,
     Valid,
@@ -49,6 +50,9 @@ impl FixtureDatabase for SearchIndexFixtureDb {
             }
             Self::EmptyTable => {
                 include_str!("../fixtures/search_index/empty_table.sql")
+            }
+            Self::Anchors => {
+                include_str!("../fixtures/search_index/anchors.sql")
             }
             Self::NoSearchIndex => {
                 include_str!("../fixtures/search_index/no_search_index.sql")

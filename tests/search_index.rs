@@ -19,33 +19,33 @@ fn reads_every_row_of_a_valid_index() {
         (
             ":",
             "Builtin",
-            "bash/Bourne-Shell-Builtins.html#//apple_ref/Builtin/%3A",
-            None,
+            "bash/Bourne-Shell-Builtins.html",
+            Some("//apple_ref/Builtin/%3A"),
         ),
         ("Introduction", "Guide", "bash/Introduction.html", None),
         (
             "!",
             "Word",
-            "bash/Pipelines.html#//apple_ref/Word/%21",
-            None,
+            "bash/Pipelines.html",
+            Some("//apple_ref/Word/%21"),
         ),
         (
             "abort (C-g)",
             "Function",
-            "bash/Miscellaneous-Commands.html#//apple_ref/Function/abort%20%28C%2Dg%29",
-            None,
+            "bash/Miscellaneous-Commands.html",
+            Some("//apple_ref/Function/abort%20%28C%2Dg%29"),
         ),
         (
             "_",
             "Variable",
-            "bash/Bash-Variables.html#//apple_ref/Variable/%5F",
-            None,
+            "bash/Bash-Variables.html",
+            Some("//apple_ref/Variable/%5F"),
         ),
         (
             "-",
             "Parameter",
-            "bash/Special-Parameters.html#//apple_ref/Parameter/%2D",
-            None,
+            "bash/Special-Parameters.html",
+            Some("//apple_ref/Parameter/%2D"),
         ),
     ]
     .map(|row| Entry::try_from(row).unwrap());

@@ -3,63 +3,64 @@
 There's no formal spec for a docset entry's `type` (SearchIndex schema:
 `searchIndex.type`; Core Data schema: `ZTOKENTYPE.ZTYPENAME`; see
 [Terminology](architecture.md#terminology)) — it's free text chosen by whatever
-generator built the docset (`dashing`, `doc2dash`, hand-rolled scripts...), with no
-`CHECK` constraint, foreign key, or lookup table backing it in either schema
-(verified via `sqlite3 .schema` against real docsets). This page
-collects what was learned empirically while designing `EntryType`
-(`src/docset/entry.rs`, ADR-7 in [adr.md](adr.md)), so it doesn't need re-deriving.
+generator built the docset (`dashing`, `doc2dash`, hand-rolled scripts...), with
+no `CHECK` constraint, foreign key, or lookup table backing it in either schema
+(verified via `sqlite3 .schema` against real docsets). This page collects what
+was learned empirically while designing `EntryType` (`src/docset/entry.rs`,
+ADR-7 in [adr.md](adr.md)), so it doesn't need re-deriving.
 
 **Compiled 2026-09-30.**
 
 ## What `EntryType` actually implements right now
 
-Scoped deliberately to only what the 3 real docsets in `docsets/` need — see ADR-7
-in [adr.md](adr.md) for why. Everything else below is reference material for extending it.
+Scoped deliberately to only what the 3 real docsets in `docsets/` need — see
+ADR-7 in [adr.md](adr.md) for why. Everything else below is reference material
+for extending it.
 
-| Variant | Raw strings it matches |
-| --- | --- |
-| `Builtin` | `Builtin` |
-| `Function` | `Function`, `func` |
-| `Guide` | `Guide` |
-| `Macro` | `Macro`, `macro` |
-| `Parameter` | `Parameter` |
-| `Variable` | `Variable` |
-| `Word` | `Word` |
+| Variant         | Raw strings it matches  |
+| --------------- | ----------------------- |
+| `Builtin`       | `Builtin`               |
+| `Function`      | `Function`, `func`      |
+| `Guide`         | `Guide`                 |
+| `Macro`         | `Macro`, `macro`        |
+| `Parameter`     | `Parameter`             |
+| `Variable`      | `Variable`              |
+| `Word`          | `Word`                  |
 | `Other(String)` | anything else, verbatim |
 
 ## Zeal's full canonical vocabulary + alias table
 
 Source: `zealdocs/zeal`, `src/libs/registry/docset.cpp`,
 `Docset::parseSymbolType` — read directly from a shallow clone, not from memory.
-Zeal doesn't use a closed enum either: `parseSymbolType` returns a plain `QString`,
-normalized through a hand-maintained `QHash<QString, QString>` alias table
-(`aliases.value(str, str)` — returns the input **unchanged** if not found, so
-anything unrecognized just passes through as itself). The table below is the
-complete set of ~20 canonical target names and every alias mapped onto each, as of
-the commit cloned.
+Zeal doesn't use a closed enum either: `parseSymbolType` returns a plain
+`QString`, normalized through a hand-maintained `QHash<QString, QString>` alias
+table (`aliases.value(str, str)` — returns the input **unchanged** if not found,
+so anything unrecognized just passes through as itself). The table below is the
+complete set of ~20 canonical target names and every alias mapped onto each, as
+of the commit cloned.
 
-| Canonical name | Raw strings that normalize to it |
-| --- | --- |
-| `Attribute` | `Package Attributes`, `Private Attributes`, `Protected Attributes`, `Public Attributes`, `Static Package Attributes`, `Static Private Attributes`, `Static Protected Attributes`, `Static Public Attributes`, `XML Attributes` |
-| `Binding` | `binding` |
-| `Category` | `cat`, `Groups`, `Pages` |
-| `Class` | `cl`, `specialization`, `tmplt` |
-| `Constant` | `data`, `econst`, `enumdata`, `enumelt`, `clconst`, `structdata`, `writerid`, `Notifications` |
-| `Constructor` | `structctr`, `Public Constructors` |
-| `Enumeration` | `enum`, `Enum`, `Enumerations` |
-| `Event` | `event`, `Public Events`, `Inherited Events`, `Private Events` |
-| `Field` | `Data Fields` |
-| `Function` | `dcop`, `func`, `ffunc`, `signal`, `slot`, `grammar`, `Function Prototypes`, `Functions/Subroutines`, `Members`, `Package Functions`, `Private Member Functions`, `Private Slots`, `Protected Member Functions`, `Protected Slots`, `Public Member Functions`, `Public Slots`, `Signals`, `Static Package Functions`, `Static Private Member Functions`, `Static Protected Member Functions`, `Static Public Member Functions` |
-| `Guide` | `doc` |
-| `Namespace` | `ns` |
-| `Macro` | `macro` |
-| `Method` | `clm`, `enumcm`, `enumctr`, `enumm`, `intfctr`, `intfcm`, `intfm`, `intfsub`, `instsub`, `instctr`, `instm`, `structcm`, `structm`, `structsub`, `Class Methods`, `Inherited Methods`, `Instance Methods`, `Private Methods`, `Protected Methods`, `Public Methods` |
-| `Operator` | `intfopfunc`, `opfunc` |
-| `Property` | `enump`, `intfdata`, `intfp`, `instp`, `structp`, `Inherited Properties`, `Private Properties`, `Protected Properties`, `Public Properties` |
-| `Protocol` | `intf` |
-| `Structure` | `_Struct`, `_Structs`, `struct`, `Control Structure`, `Data Structures`, `Struct` |
-| `Type` | `tag`, `tdef`, `Data Types`, `Package Types`, `Private Types`, `Protected Types`, `Public Types`, `Typedefs` |
-| `Variable` | `var` |
+| Canonical name | Raw strings that normalize to it                                                                                                                                                                                                                                                                                                                                                                                               |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `Attribute`    | `Package Attributes`, `Private Attributes`, `Protected Attributes`, `Public Attributes`, `Static Package Attributes`, `Static Private Attributes`, `Static Protected Attributes`, `Static Public Attributes`, `XML Attributes`                                                                                                                                                                                                 |
+| `Binding`      | `binding`                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `Category`     | `cat`, `Groups`, `Pages`                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `Class`        | `cl`, `specialization`, `tmplt`                                                                                                                                                                                                                                                                                                                                                                                                |
+| `Constant`     | `data`, `econst`, `enumdata`, `enumelt`, `clconst`, `structdata`, `writerid`, `Notifications`                                                                                                                                                                                                                                                                                                                                  |
+| `Constructor`  | `structctr`, `Public Constructors`                                                                                                                                                                                                                                                                                                                                                                                             |
+| `Enumeration`  | `enum`, `Enum`, `Enumerations`                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `Event`        | `event`, `Public Events`, `Inherited Events`, `Private Events`                                                                                                                                                                                                                                                                                                                                                                 |
+| `Field`        | `Data Fields`                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `Function`     | `dcop`, `func`, `ffunc`, `signal`, `slot`, `grammar`, `Function Prototypes`, `Functions/Subroutines`, `Members`, `Package Functions`, `Private Member Functions`, `Private Slots`, `Protected Member Functions`, `Protected Slots`, `Public Member Functions`, `Public Slots`, `Signals`, `Static Package Functions`, `Static Private Member Functions`, `Static Protected Member Functions`, `Static Public Member Functions` |
+| `Guide`        | `doc`                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `Namespace`    | `ns`                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `Macro`        | `macro`                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `Method`       | `clm`, `enumcm`, `enumctr`, `enumm`, `intfctr`, `intfcm`, `intfm`, `intfsub`, `instsub`, `instctr`, `instm`, `structcm`, `structm`, `structsub`, `Class Methods`, `Inherited Methods`, `Instance Methods`, `Private Methods`, `Protected Methods`, `Public Methods`                                                                                                                                                            |
+| `Operator`     | `intfopfunc`, `opfunc`                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `Property`     | `enump`, `intfdata`, `intfp`, `instp`, `structp`, `Inherited Properties`, `Private Properties`, `Protected Properties`, `Public Properties`                                                                                                                                                                                                                                                                                    |
+| `Protocol`     | `intf`                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `Structure`    | `_Struct`, `_Structs`, `struct`, `Control Structure`, `Data Structures`, `Struct`                                                                                                                                                                                                                                                                                                                                              |
+| `Type`         | `tag`, `tdef`, `Data Types`, `Package Types`, `Private Types`, `Protected Types`, `Public Types`, `Typedefs`                                                                                                                                                                                                                                                                                                                   |
+| `Variable`     | `var`                                                                                                                                                                                                                                                                                                                                                                                                                          |
 
 Note the `cl`/`clm`/`clconst`/`instp`/`tdef` family — Xcode/Doxygen-generator
 shorthand (class / class-method / class-constant / instance-property / typedef)
@@ -69,22 +70,24 @@ already decoded it.
 ## 23-docset survey: real-world `type` usage
 
 Pulled from `github.com/Kapeli/feeds` (the same source M0 used to get
-`Bash`/`SQLite`/`Lua`): Python, JavaScript, TypeScript, Java, C, C++, Go, Rust, Ruby,
-PHP, Swift, React, Django, Ruby_on_Rails, VueJS, NodeJS, PostgreSQL, MySQL, Redis,
-Docker, plus the existing Bash/SQLite/Lua. C++, C, Django, Java, JavaScript, MySQL,
-Python and Ruby_on_Rails (plus Lua) use the Core Data schema; the rest use the
-SearchIndex schema (see [Terminology](architecture.md#terminology)).
+`Bash`/`SQLite`/`Lua`): Python, JavaScript, TypeScript, Java, C, C++, Go, Rust,
+Ruby, PHP, Swift, React, Django, Ruby_on_Rails, VueJS, NodeJS, PostgreSQL,
+MySQL, Redis, Docker, plus the existing Bash/SQLite/Lua. C++, C, Django, Java,
+JavaScript, MySQL, Python and Ruby_on_Rails (plus Lua) use the Core Data schema;
+the rest use the SearchIndex schema (see
+[Terminology](architecture.md#terminology)).
 
-An earlier version of this page said every surveyed docset had a `searchIndex` table
-and that the Core Data ones *also* had one. That was wrong: rechecked 2026-10-08
-against current downloads of C++, Django, Java, JavaScript, MySQL and Python, none of
-them has a `searchIndex` table, only the Core Data tables. C and Ruby_on_Rails weren't
-rechecked.
+An earlier version of this page said every surveyed docset had a `searchIndex`
+table and that the Core Data ones _also_ had one. That was wrong: rechecked
+2026-10-08 against current downloads of C++, Django, Java, JavaScript, MySQL and
+Python, none of them has a `searchIndex` table, only the Core Data tables. C and
+Ruby_on_Rails weren't rechecked.
 
 **183 (docset, type) rows, 55 distinct type strings. 36 shared verbatim by 2+
 docsets; 19 unique to exactly one docset.**
 
-Full table (count per docset that uses that string), sorted by how many docsets share it:
+Full table (count per docset that uses that string), sorted by how many docsets
+share it:
 
 ```
 18  Guide       C++:388 C:161 Django:276 Docker:1261 Go:127 JavaScript:690 NodeJS:908 PHP:144 PostgreSQL:35 Python:250 React:178 Redis:1583 Ruby:66 Ruby_on_Rails:66 Rust:1170 TypeScript:71 VueJS:81 Bash:139
@@ -146,15 +149,16 @@ Full table (count per docset that uses that string), sorted by how many docsets 
 ### Notable findings (not just spelling drift)
 
 - **`PHP.docset` uses both `func` (3962 rows) and `Function` (73 rows)
-  simultaneously** — not a cross-docset spelling difference, the same docset uses
-  both. No way to tell from outside whether that's intentional (two real concepts)
-  or generator inconsistency. Zeal's alias table merges `func → Function`
-  unconditionally regardless; we don't currently alias `Function` vs `func` beyond
-  what our own docsets need (both map to `EntryType::Function`).
+  simultaneously** — not a cross-docset spelling difference, the same docset
+  uses both. No way to tell from outside whether that's intentional (two real
+  concepts) or generator inconsistency. Zeal's alias table merges
+  `func → Function` unconditionally regardless; we don't currently alias
+  `Function` vs `func` beyond what our own docsets need (both map to
+  `EntryType::Function`).
 - **`C++.docset` mixes three incompatible naming conventions in one file**:
-  spelled-out capitalized (`Guide`, `Enum`, `Struct`, `Keyword`...), lowercase-short
-  (`func`, `macro`), and the cryptic abbreviated family (`cl`, `clm`, `clconst`,
-  `instp`, `tdef`) — all at once.
+  spelled-out capitalized (`Guide`, `Enum`, `Struct`, `Keyword`...),
+  lowercase-short (`func`, `macro`), and the cryptic abbreviated family (`cl`,
+  `clm`, `clconst`, `instp`, `tdef`) — all at once.
 - **`Lua.docset` types every single one of its 461 `ZTOKEN` rows as `"func"`** —
   re-verified directly (row counts match, zero rows have a dangling/missing
   `ZTOKENTYPE` reference), not a query artifact. The docset genuinely doesn't
@@ -164,18 +168,18 @@ Full table (count per docset that uses that string), sorted by how many docsets 
 
 - Not exhaustive — 23 docsets and one shipped tool's alias table, not the whole
   ecosystem. Treat an unfamiliar string as "not yet seen," not "doesn't exist."
-- `cl`/`clm`/`clconst`/`instp`/`tdef` reads like Xcode/Doxygen-generator shorthand,
-  but that's inferred from Zeal's naming, not independently confirmed against a
-  generator's own source.
-- The near-miss clusters above (`func`/`Function`, `macro`/`Macro`) are flagged, not
-  resolved — whether/how far to extend `EntryType`'s alias list beyond what
+- `cl`/`clm`/`clconst`/`instp`/`tdef` reads like Xcode/Doxygen-generator
+  shorthand, but that's inferred from Zeal's naming, not independently confirmed
+  against a generator's own source.
+- The near-miss clusters above (`func`/`Function`, `macro`/`Macro`) are flagged,
+  not resolved — whether/how far to extend `EntryType`'s alias list beyond what
   `docsets/` needs is an open follow-up (see ADR-7).
 
 ## Sources
 
 - `zealdocs/zeal`, `src/libs/registry/docset.cpp` (`Docset::parseSymbolType`) —
   cloned shallow and read directly, not from memory.
-- `github.com/Kapeli/feeds` — the feed source the local
-  `Bash`/`SQLite`/`Lua` docsets came from.
+- `github.com/Kapeli/feeds` — the feed source the local `Bash`/`SQLite`/`Lua`
+  docsets came from.
 - Real docsets in `docsets/` (gitignored) and the 20 surveyed above (not kept
   locally — downloaded to a scratch directory and discarded after the survey).

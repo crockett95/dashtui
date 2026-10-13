@@ -86,6 +86,8 @@ mod test {
 
     use std::collections::HashSet;
 
+    use rusqlite::fallible_iterator::FallibleIterator;
+
     use super::*;
 
     #[test]
@@ -235,5 +237,23 @@ mod test {
 
         let err = SchemaType::CoreData.read_all(&conn).unwrap_err();
         std::assert_matches!(err, rusqlite::Error::SqliteFailure(_, _))
+    }
+
+    #[test]
+    fn splits_search_index_anchors() {
+        let conn = fixture_conn(fixture_db!("search_index/anchors.sql"));
+
+        let mut statement = SchemaType::SearchIndex.read_all(&conn).unwrap();
+        let rows: Vec<(String, String)> = statement
+            .query(())
+            .unwrap()
+            .map(|r| Ok((r.get_unwrap("path"), r.get_unwrap("fragment"))))
+            .unwrap()
+            .collect();
+        let expected = [
+            ("sqlite/printf.html".to_string(), "percentq".to_string()),
+            ("sqlite/fileformat2.html".to_string(), "#sqltab".to_string()),
+        ];
+        assert_eq!(rows, expected);
     }
 }
