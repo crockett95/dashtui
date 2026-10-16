@@ -78,6 +78,14 @@ pub struct Entry {
     anchor: Option<String>,
 }
 
+#[derive(Clone, Copy)]
+pub struct RawEntry<'a> {
+    pub name: &'a str,
+    pub kind: &'a str,
+    pub path: &'a str,
+    pub anchor: Option<&'a str>,
+}
+
 /// Why a raw `(name, type, path)` index row could not become an `Entry`.
 ///
 /// `type` is never a source of failure here: `EntryType::from` is total, so an
@@ -138,7 +146,7 @@ static PATH_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new("^(?<meta>(?:<[^>]*>)*)(?<path>.*)$").expect("Path/metamarker regex invalid")
 });
 
-impl TryFrom<(&str, &str, &str, Option<&str>)> for Entry {
+impl<'a> TryFrom<RawEntry<'a>> for Entry {
     type Error = Error;
 
     /// Converts a raw `(name, type, path, anchor)` index row into an `Entry`.
@@ -155,22 +163,20 @@ impl TryFrom<(&str, &str, &str, Option<&str>)> for Entry {
     /// [`Error::EmptyPath`] if `path` is empty once markers are removed, so a
     /// path made only of markers is rejected. `anchor` never fails: `None`
     /// and any string are both accepted.
-    fn try_from(
-        (name, raw_type, path, anchor): (&str, &str, &str, Option<&str>),
-    ) -> Result<Self, Self::Error> {
-        if name.is_empty() {
+    fn try_from(args: RawEntry<'a>) -> Result<Entry, Error> {
+        if args.name.is_empty() {
             return Err(Error::EmptyName);
         }
-        if let Some(parts) = PATH_REGEX.captures(path)
+        if let Some(parts) = PATH_REGEX.captures(args.path)
             && !parts["path"].is_empty()
         {
             let path = parts["path"].to_string();
             // TODO:consume parts["meta"]
             Ok(Self {
-                name: name.to_owned(),
+                name: args.name.to_owned(),
                 path,
-                kind: EntryType::from(raw_type),
-                anchor: anchor.map(String::from),
+                kind: EntryType::from(args.kind),
+                anchor: args.anchor.map(String::from),
             })
         } else {
             Err(Error::EmptyPath)
@@ -184,7 +190,13 @@ mod test {
 
     #[test]
     fn valid_row_converts_to_entry() {
-        let entry = Entry::try_from(("foo", "func", "baz", Some("quux"))).unwrap();
+        let entry = Entry::try_from(RawEntry {
+            name: "foo",
+            kind: "func",
+            path: "baz",
+            anchor: Some("quux"),
+        })
+        .unwrap();
         assert_eq!(entry.name, "foo");
         assert_eq!(entry.kind, EntryType::Function);
         assert_eq!(entry.path, "baz");
@@ -193,30 +205,73 @@ mod test {
 
     #[test]
     fn empty_name_is_rejected() {
-        let error = Entry::try_from(("", "bar", "baz", Some("quux"))).unwrap_err();
+        let error = Entry::try_from(RawEntry {
+            name: "",
+            kind: "bar",
+            path: "baz",
+            anchor: Some("quux"),
+        })
+        .unwrap_err();
         assert_eq!(error, Error::EmptyName);
     }
 
     #[test]
     fn empty_path_is_rejected() {
-        let error = Entry::try_from(("foo", "bar", "", Some("quux"))).unwrap_err();
+        let error = Entry::try_from(RawEntry {
+            name: "foo",
+            kind: "bar",
+            path: "",
+            anchor: Some("quux"),
+        })
+        .unwrap_err();
         assert_eq!(error, Error::EmptyPath);
     }
 
     #[test]
     fn none_anchor_is_not_rejected() {
-        let entry = Entry::try_from(("foo", "bar", "baz", None)).unwrap();
+        let entry = Entry::try_from(RawEntry {
+            name: "foo",
+            kind: "bar",
+            path: "baz",
+            anchor: None,
+        })
+        .unwrap();
         assert_eq!(entry.anchor, None);
     }
 
     #[test]
     fn collecting_valid_rows_yields_all_entries() {
         let data = [
-            ("foo1", "bar", "baz", Some("quux")),
-            ("foo2", "bar", "baz", Some("quux")),
-            ("foo3", "bar", "baz", Some("quux")),
-            ("foo4", "bar", "baz", Some("quux")),
-            ("foo5", "bar", "baz", Some("quux")),
+            RawEntry {
+                name: "foo1",
+                kind: "bar",
+                path: "baz",
+                anchor: Some("quux"),
+            },
+            RawEntry {
+                name: "foo2",
+                kind: "bar",
+                path: "baz",
+                anchor: Some("quux"),
+            },
+            RawEntry {
+                name: "foo3",
+                kind: "bar",
+                path: "baz",
+                anchor: Some("quux"),
+            },
+            RawEntry {
+                name: "foo4",
+                kind: "bar",
+                path: "baz",
+                anchor: Some("quux"),
+            },
+            RawEntry {
+                name: "foo5",
+                kind: "bar",
+                path: "baz",
+                anchor: Some("quux"),
+            },
         ];
         let entries = data
             .into_iter()
@@ -236,13 +291,38 @@ mod test {
     #[test]
     fn collecting_rows_short_circuits_on_first_error() {
         let data = [
-            ("foo", "bar", "baz", None),
+            RawEntry {
+                name: "foo",
+                kind: "bar",
+                path: "baz",
+                anchor: None,
+            },
             // First error
-            ("foo", "bar", "", Some("quux")),
-            ("foo", "bar", "baz", Some("quux")),
+            RawEntry {
+                name: "foo",
+                kind: "bar",
+                path: "",
+                anchor: Some("quux"),
+            },
+            RawEntry {
+                name: "foo",
+                kind: "bar",
+                path: "baz",
+                anchor: Some("quux"),
+            },
             // Second error because we shouldn't make it this far
-            ("", "bar", "baz", None),
-            ("foo", "bar", "baz", None),
+            RawEntry {
+                name: "",
+                kind: "bar",
+                path: "baz",
+                anchor: None,
+            },
+            RawEntry {
+                name: "foo",
+                kind: "bar",
+                path: "baz",
+                anchor: None,
+            },
         ];
         let error = data
             .into_iter()
@@ -310,7 +390,13 @@ mod test {
             "<dash_entry_menuDescription=document structural>",
             "developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Roles/structural_roles.html"
         );
-        let entry = Entry::try_from(("document structural", "Role", path, None)).unwrap();
+        let entry = Entry::try_from(RawEntry {
+            name: "document structural",
+            kind: "Role",
+            path,
+            anchor: None,
+        })
+        .unwrap();
 
         assert_eq!(
             entry.path(),
@@ -325,7 +411,13 @@ mod test {
             "<dash_entry_originalName=document structural>",
             "<dash_entry_menuDescription=document structural>",
         );
-        let error = Entry::try_from(("document structural", "Role", path, None)).unwrap_err();
+        let error = Entry::try_from(RawEntry {
+            name: "document structural",
+            kind: "Role",
+            path,
+            anchor: None,
+        })
+        .unwrap_err();
         std::assert_matches!(error, Error::EmptyPath);
     }
 }

@@ -41,7 +41,7 @@ mod test {
     use super::*;
 
     use crate::{
-        docset::{Docset, meta::DocsetMeta},
+        docset::{Docset, entry::RawEntry, meta::DocsetMeta},
         json::DiscoveryView,
     };
 
@@ -148,7 +148,13 @@ mod test {
 
     #[test]
     fn entry_serializes_with_anchor() {
-        let entry = Entry::try_from(("name", "type", "path/to/docs", Some("anchor"))).unwrap();
+        let entry = Entry::try_from(RawEntry {
+            name: "name",
+            kind: "type",
+            path: "path/to/docs",
+            anchor: Some("anchor"),
+        })
+        .unwrap();
         let json = serde_json::to_string(&entry).unwrap();
         assert_eq!(
             json,
@@ -158,7 +164,13 @@ mod test {
 
     #[test]
     fn entry_serializes_without_anchor() {
-        let entry = Entry::try_from(("name", "type", "path/to/docs", None)).unwrap();
+        let entry = Entry::try_from(RawEntry {
+            name: "name",
+            kind: "type",
+            path: "path/to/docs",
+            anchor: None,
+        })
+        .unwrap();
         let json = serde_json::to_string(&entry).unwrap();
         assert_eq!(
             json,
@@ -168,8 +180,20 @@ mod test {
 
     #[test]
     fn search_view_serializes_with_docset_and_query() {
-        let entry1 = Entry::try_from(("result1", "func", "path/to/docs", None)).unwrap();
-        let entry2 = Entry::try_from(("result2", "type", "path/to/other", Some("anchor"))).unwrap();
+        let entry1 = Entry::try_from(RawEntry {
+            name: "result1",
+            kind: "func",
+            path: "path/to/docs",
+            anchor: None,
+        })
+        .unwrap();
+        let entry2 = Entry::try_from(RawEntry {
+            name: "result2",
+            kind: "type",
+            path: "path/to/other",
+            anchor: Some("anchor"),
+        })
+        .unwrap();
         let docset = Docset::from((PathBuf::from("path/to/docset"), None));
         let results = SearchView {
             docset: &docset,

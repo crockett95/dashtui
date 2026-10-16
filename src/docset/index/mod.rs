@@ -18,7 +18,10 @@ use std::path::Path;
 
 use rusqlite::{Connection, OpenFlags, Row};
 
-use crate::docset::{entry, entry::Entry, index::schema_type::SchemaType};
+use crate::docset::{
+    entry::{self, Entry, RawEntry},
+    index::schema_type::SchemaType,
+};
 
 /// Why a docset-schema index couldn't be read.
 #[derive(Debug, PartialEq, thiserror::Error)]
@@ -87,17 +90,34 @@ pub fn read_entries(index_path: &Path) -> Result<Vec<Entry>, Error> {
 fn read_entry_row(row: &Row<'_>) -> Result<Entry, Error> {
     let id = row.get("id")?;
     let row_err = |sqlite_error| Error::RowRead { id, sqlite_error };
+    let sql_err = |sqlite_error| row_err(rusqlite::Error::from(sqlite_error));
 
-    let name: String = row.get("name").map_err(row_err)?;
-    let entry_type: String = row.get("type").map_err(row_err)?;
-    let path: String = row.get("path").map_err(row_err)?;
-    let anchor: Option<String> = row.get("anchor").map_err(row_err)?;
+    let name = row
+        .get_ref("name")
+        .map(|v| v.as_str())
+        .map_err(row_err)?
+        .map_err(sql_err)?;
+    let kind = row
+        .get_ref("type")
+        .map(|v| v.as_str())
+        .map_err(row_err)?
+        .map_err(sql_err)?;
+    let path = row
+        .get_ref("path")
+        .map(|v| v.as_str())
+        .map_err(row_err)?
+        .map_err(sql_err)?;
+    let anchor = row
+        .get_ref("anchor")
+        .map(|v| v.as_str_or_null())
+        .map_err(row_err)?
+        .map_err(sql_err)?;
 
-    Entry::try_from((
-        name.as_str(),
-        entry_type.as_str(),
-        path.as_str(),
-        anchor.as_deref(),
-    ))
+    Entry::try_from(RawEntry {
+        name,
+        kind,
+        path,
+        anchor,
+    })
     .map_err(|entry_error| Error::RowParse { id, entry_error })
 }

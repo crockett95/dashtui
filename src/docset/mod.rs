@@ -258,13 +258,21 @@ mod test {
     }
 
     mod search_index {
+        use crate::docset::entry::RawEntry;
+
         use super::*;
         fn names<'a>(hits: &[&'a Entry]) -> Vec<&'a str> {
             hits.iter().map(|i| i.name()).collect()
         }
 
         fn entry(name: &str, path: &str) -> Entry {
-            Entry::try_from((name, "Function", path, None)).unwrap()
+            Entry::try_from(RawEntry {
+                name,
+                kind: "Function",
+                path,
+                anchor: None,
+            })
+            .unwrap()
         }
 
         /// A docset with entries already loaded, so no index file is needed.

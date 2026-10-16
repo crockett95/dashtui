@@ -1,7 +1,6 @@
 mod common;
 use dashtui::docset::{
-    entry,
-    entry::Entry,
+    entry::{self, Entry, RawEntry},
     index::{self, read_entries},
 };
 
@@ -34,6 +33,12 @@ fn reads_every_row_of_a_valid_index() {
             Some("//apple_ref/func/utf8%2Ecodes"),
         ),
     ]
+    .map(|(name, kind, path, anchor)| RawEntry {
+        name,
+        kind,
+        path,
+        anchor,
+    })
     .map(|row| Entry::try_from(row).unwrap());
     assert_eq!(entries, expected);
 }
@@ -70,6 +75,12 @@ fn returns_all_entries_if_duplicate_meta() {
             Some("//apple_ref/func/type"),
         ),
     ]
+    .map(|(name, kind, path, anchor)| RawEntry {
+        name,
+        kind,
+        path,
+        anchor,
+    })
     .map(|row| Entry::try_from(row).unwrap());
     assert_eq!(entries, expected);
 }
@@ -188,6 +199,12 @@ fn uses_none_for_missing_anchor() {
             None,
         ),
     ]
+    .map(|(name, kind, path, anchor)| RawEntry {
+        name,
+        kind,
+        path,
+        anchor,
+    })
     .map(|row| Entry::try_from(row).unwrap());
     assert_eq!(entries, expected);
 }

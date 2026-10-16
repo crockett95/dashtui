@@ -1,7 +1,7 @@
 mod common;
 
-use dashtui::docset::entry;
 use dashtui::docset::entry::Entry;
+use dashtui::docset::entry::{self, RawEntry};
 use dashtui::docset::index::{self, read_entries};
 use rusqlite::Error;
 
@@ -48,6 +48,12 @@ fn reads_every_row_of_a_valid_index() {
             Some("//apple_ref/Parameter/%2D"),
         ),
     ]
+    .map(|(name, kind, path, anchor)| RawEntry {
+        name,
+        kind,
+        path,
+        anchor,
+    })
     .map(|row| Entry::try_from(row).unwrap());
     assert_eq!(entries, expected);
 }
@@ -120,7 +126,7 @@ fn null_column_is_an_error() {
         err,
         index::Error::RowRead {
             id: 20,
-            sqlite_error: Error::InvalidColumnType(_, _, _)
+            sqlite_error: Error::FromSqlConversionFailure(_, _, _)
         }
     );
 }
