@@ -4,10 +4,10 @@ use crate::docset::entry::{Entry, EntryType};
 
 /// Counts the entries per distinct [`EntryType`] in a collection of docset [`Entry`]s.
 ///
-/// Given a slice of [`Entry`] objects, accumulates the counts of each type
+/// Given any iterable of [`Entry`] references, accumulates the counts of each type
 /// ([`Entry::kind`]) of entry in the collection, keyed and ordered by [`EntryType`].
 #[must_use]
-pub fn count_types(entries: &[Entry]) -> BTreeMap<EntryType, usize> {
+pub fn count_types<'a>(entries: impl IntoIterator<Item = &'a Entry>) -> BTreeMap<EntryType, usize> {
     let mut counts = BTreeMap::new();
     for entry in entries {
         if let Some(kind_count) = counts.get_mut(entry.kind()) {
