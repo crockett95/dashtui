@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use dashtui::docset::{Docset, find_docsets};
 use dashtui::json::{DiscoveryView, SearchView, StatsView};
@@ -58,64 +58,76 @@ fn main() -> Result<()> {
         Command::List {
             root_dir,
             include_broken,
-        } => {
-            let docsets = find_docsets(&root_dir)?
-                .into_iter()
-                .filter(|d| include_broken || d.meta().is_some())
-                .collect();
-            if cli.json {
-                let json = serde_json::to_string(&DiscoveryView { docsets })?;
-                println!("{}", json);
-            } else {
-                for docset in docsets.iter() {
-                    let name = if let Some(meta) = docset.meta() {
-                        &meta.name
-                    } else {
-                        ""
-                    };
-                    println!("{}\t{}", name, docset.path().display());
-                }
-            }
-        }
-        Command::Stats { docset_dir } => {
-            let docset = Docset::load(docset_dir);
-            let counts = docset.load_stats()?;
-            if cli.json {
-                let json = serde_json::to_string(&StatsView { docset, counts })?;
-                println!("{}", json);
-            } else {
-                for (key, count) in counts.iter() {
-                    println!("{:<12}{:>5}", key, count);
-                }
-            }
-        }
+        } => list(&root_dir, include_broken, cli.json)?,
+        Command::Stats { docset_dir } => stats(docset_dir, cli.json)?,
         Command::Search {
             docset_dir,
             query,
             limit,
-        } => {
-            let docset = Docset::load(docset_dir);
-            let mut results = docset.search(&query)?;
-            results.truncate(limit);
-            if cli.json {
-                let json = serde_json::to_string(&SearchView {
-                    docset: &docset,
-                    query: &query,
-                    results,
-                })?;
-                println!("{}", json);
+        } => search(docset_dir, &query, limit, cli.json)?,
+    }
+    Ok(())
+}
+
+/// `list` subcommand implementation. See [`Command::List`]
+fn list(root_dir: &Path, include_broken: bool, json: bool) -> Result<()> {
+    let docsets = find_docsets(root_dir)?
+        .into_iter()
+        .filter(|d| include_broken || d.meta().is_some())
+        .collect();
+    if json {
+        let json = serde_json::to_string(&DiscoveryView { docsets })?;
+        println!("{}", json);
+    } else {
+        for docset in &docsets {
+            let name = if let Some(meta) = docset.meta() {
+                &meta.name
             } else {
-                println!("Results for '{}' in {}", query, docset.path().display());
-                println!("{:<50}\t{:<12}\tPath (with Anchor)", "Name", "Type");
-                for entry in results {
-                    let path = if let Some(anchor) = entry.anchor() {
-                        format!("{}#{}", entry.path(), anchor)
-                    } else {
-                        entry.path().to_string()
-                    };
-                    println!("{:<50}\t{:<12}\t{}", entry.name(), entry.kind(), path);
-                }
-            }
+                ""
+            };
+            println!("{}\t{}", name, docset.path().display());
+        }
+    }
+    Ok(())
+}
+
+/// `stats` subcommand implementation. See [`Command::Stats`]
+fn stats(docset_dir: PathBuf, json: bool) -> Result<()> {
+    let docset = Docset::load(docset_dir);
+    let counts = docset.load_stats()?;
+    if json {
+        let json = serde_json::to_string(&StatsView { docset, counts })?;
+        println!("{}", json);
+    } else {
+        for (key, count) in &counts {
+            println!("{:<12}\t{:>5}", key, count);
+        }
+    }
+    Ok(())
+}
+
+/// `search` subcommand implementation. See [`Command::Search`]
+fn search(docset_dir: PathBuf, query: &str, limit: usize, json: bool) -> Result<()> {
+    let docset = Docset::load(docset_dir);
+    let mut results = docset.search(query)?;
+    results.truncate(limit);
+    if json {
+        let json = serde_json::to_string(&SearchView {
+            docset: &docset,
+            query,
+            results,
+        })?;
+        println!("{}", json);
+    } else {
+        println!("Results for '{}' in {}", query, docset.path().display());
+        println!("{:<50}\t{:<12}\tPath (with Anchor)", "Name", "Type");
+        for entry in results {
+            let path = if let Some(anchor) = entry.anchor() {
+                format!("{}#{}", entry.path(), anchor)
+            } else {
+                entry.path().to_string()
+            };
+            println!("{:<50}\t{:<12}\t{}", entry.name(), entry.kind(), path);
         }
     }
     Ok(())
