@@ -58,7 +58,7 @@ fn reads_every_row_of_a_valid_index() {
     assert_eq!(entries, expected);
 }
 
-/// A valid but empty database returns Ok() with no rows.
+/// A valid but empty database returns `Ok()` with no rows.
 #[test]
 fn returns_empty_vec_for_empty_table() {
     let (_dir, path) = SearchIndexFixtureDb::EmptyTable.build();

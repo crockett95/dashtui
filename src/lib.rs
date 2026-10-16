@@ -2,6 +2,7 @@ pub mod docset;
 pub mod json;
 pub mod stats;
 
+#[must_use]
 pub fn sum_up_to(n: u32) -> u32 {
     let mut i = 0;
     let mut sum = 0;
@@ -12,6 +13,7 @@ pub fn sum_up_to(n: u32) -> u32 {
     sum
 }
 
+#[must_use]
 pub fn shout(say: &str) -> String {
     format!("{}!", say.to_uppercase())
 }

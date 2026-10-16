@@ -104,14 +104,14 @@ impl Docset {
     pub fn search(&self, query: &str) -> Result<Vec<&Entry>, Error> {
         let entries = self.load_index()?;
         let mut matcher = Matcher::new(Config::DEFAULT);
-        let matches = Pattern::new(
+        let results = Pattern::new(
             query,
             CaseMatching::Smart,
             Normalization::Smart,
             AtomKind::Fuzzy,
         )
         .match_list(entries, &mut matcher);
-        Ok(matches.into_iter().map(|(a, _)| a).collect())
+        Ok(results.into_iter().map(|(a, _)| a).collect())
     }
 
     /// The docset's entries, reading the index on the first successful call.
@@ -149,6 +149,7 @@ impl Docset {
     ///
     /// The index isn't read here; [`Docset::search`] and
     /// [`Docset::load_stats`] load it on first use.
+    #[must_use]
     pub fn load(path: PathBuf) -> Self {
         let meta = match DocsetMeta::load(&path) {
             Ok(meta) => Some(meta),
@@ -254,6 +255,7 @@ pub fn find_docsets(root: &Path) -> io::Result<Vec<Docset>> {
                         "Could not read contents of directory {}: {e}",
                         path.display()
                     );
+                    #[allow(clippy::needless_continue)]
                     continue;
                 }
             }
@@ -284,7 +286,7 @@ mod test {
             };
             let index_path = PathBuf::from(index);
 
-            assert_eq!(docset.index_path(), index_path, "case {d}: {index}")
+            assert_eq!(docset.index_path(), index_path, "case {d}: {index}");
         }
     }
 
@@ -334,7 +336,7 @@ mod test {
             let docset = docset();
             let hits = names(&docset.search("read").unwrap());
             let expected = ["read", "READLINE_LINE", "readarray"];
-            assert_eq!(hits, expected)
+            assert_eq!(hits, expected);
         }
 
         #[test]
@@ -342,7 +344,7 @@ mod test {
             let docset = docset();
             let hits = names(&docset.search("READ").unwrap());
             let expected = ["READLINE_LINE"];
-            assert_eq!(hits, expected)
+            assert_eq!(hits, expected);
         }
 
         #[test]
@@ -350,7 +352,7 @@ mod test {
             let docset = docset();
             let hits = names(&docset.search("LINE").unwrap());
             let expected = ["READLINE_LINE"];
-            assert_eq!(hits, expected)
+            assert_eq!(hits, expected);
         }
 
         #[test]
@@ -358,7 +360,7 @@ mod test {
             let docset = docset();
             let hits = names(&docset.search("rdarr").unwrap());
             let expected = ["readarray"];
-            assert_eq!(hits, expected)
+            assert_eq!(hits, expected);
         }
 
         #[test]
@@ -383,7 +385,7 @@ mod test {
                 "!",
                 "-",
             ];
-            assert_eq!(hits, expected)
+            assert_eq!(hits, expected);
         }
 
         #[test]
@@ -398,7 +400,7 @@ mod test {
             let docset = docset();
             let hits = names(&docset.search("ärger").unwrap());
             let expected = ["Ärger"];
-            assert_eq!(hits, expected)
+            assert_eq!(hits, expected);
         }
 
         #[test]
@@ -406,7 +408,7 @@ mod test {
             let docset = docset();
             let hits = names(&docset.search("(c-g)").unwrap());
             let expected = ["abort (C-g)"];
-            assert_eq!(hits, expected)
+            assert_eq!(hits, expected);
         }
 
         #[test]
@@ -414,7 +416,7 @@ mod test {
             let docset = docset();
             let hits: Vec<&str> = names(&docset.search(":").unwrap());
             let expected = [":"];
-            assert_eq!(hits, expected)
+            assert_eq!(hits, expected);
         }
     }
 }

@@ -77,7 +77,7 @@ fn list(root_dir: &Path, include_broken: bool, json: bool) -> Result<()> {
         .collect();
     if json {
         let json = serde_json::to_string(&DiscoveryView { docsets })?;
-        println!("{}", json);
+        println!("{json}");
     } else {
         for docset in &docsets {
             let name = if let Some(meta) = docset.meta() {
@@ -97,10 +97,10 @@ fn stats(docset_dir: PathBuf, json: bool) -> Result<()> {
     let counts = docset.load_stats()?;
     if json {
         let json = serde_json::to_string(&StatsView { docset, counts })?;
-        println!("{}", json);
+        println!("{json}");
     } else {
         for (key, count) in &counts {
-            println!("{:<12}\t{:>5}", key, count);
+            println!("{key:<12}\t{count:>5}");
         }
     }
     Ok(())
@@ -117,7 +117,7 @@ fn search(docset_dir: PathBuf, query: &str, limit: usize, json: bool) -> Result<
             query,
             results,
         })?;
-        println!("{}", json);
+        println!("{json}");
     } else {
         println!("Results for '{}' in {}", query, docset.path().display());
         println!("{:<50}\t{:<12}\tPath (with Anchor)", "Name", "Type");
@@ -147,7 +147,7 @@ mod test {
                 root_dir: PathBuf::from("some/dir"),
                 include_broken: false
             }
-        )
+        );
     }
 
     #[test]
@@ -165,7 +165,7 @@ mod test {
             Command::Stats {
                 docset_dir: PathBuf::from("some/dir"),
             }
-        )
+        );
     }
 
     #[test]
@@ -185,7 +185,7 @@ mod test {
                 query: String::from("query"),
                 limit: 20
             }
-        )
+        );
     }
 
     #[test]
@@ -199,7 +199,7 @@ mod test {
                 query: String::from("query"),
                 limit: 40
             }
-        )
+        );
     }
 
     #[test]

@@ -116,6 +116,6 @@ mod permissions {
         let _unlock = Unlock(temproot.path().to_path_buf());
 
         let error = find_docsets(temproot.path()).unwrap_err();
-        assert_eq!(error.kind(), PermissionDenied)
+        assert_eq!(error.kind(), PermissionDenied);
     }
 }

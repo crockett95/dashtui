@@ -8,7 +8,7 @@ use crate::common::{SearchIndexFixtureDb, fixture_docset};
 mod common;
 #[test]
 fn loads_stats_for_a_valid_index() {
-    let (_dir, docset) = fixture_docset(SearchIndexFixtureDb::Valid);
+    let (_dir, docset) = fixture_docset(&SearchIndexFixtureDb::Valid);
     let counts = docset.load_stats().unwrap();
     assert_eq!(
         counts,
@@ -24,13 +24,13 @@ fn loads_stats_for_a_valid_index() {
 }
 #[test]
 fn returns_empty_stats_if_no_rows() {
-    let (_dir, docset) = fixture_docset(SearchIndexFixtureDb::EmptyTable);
+    let (_dir, docset) = fixture_docset(&SearchIndexFixtureDb::EmptyTable);
     let counts = docset.load_stats().unwrap();
-    assert_eq!(counts, BTreeMap::new())
+    assert_eq!(counts, BTreeMap::new());
 }
 #[test]
 fn returns_error_for_invalid_db() {
-    let (_dir, docset) = fixture_docset(SearchIndexFixtureDb::NoSearchIndex);
+    let (_dir, docset) = fixture_docset(&SearchIndexFixtureDb::NoSearchIndex);
     let counts = docset.load_stats().unwrap_err();
     std::assert_matches!(
         counts,
@@ -38,11 +38,11 @@ fn returns_error_for_invalid_db() {
             index_error: index::Error::Database(_),
             path: _
         }
-    )
+    );
 }
 #[test]
 fn returns_error_for_invalid_data() {
-    let (_dir, docset) = fixture_docset(SearchIndexFixtureDb::EmptyPath);
+    let (_dir, docset) = fixture_docset(&SearchIndexFixtureDb::EmptyPath);
     let counts = docset.load_stats().unwrap_err();
     std::assert_matches!(
         counts,
@@ -53,7 +53,7 @@ fn returns_error_for_invalid_data() {
             },
             path: _
         }
-    )
+    );
 }
 #[test]
 fn return_error_if_no_index() {
@@ -66,5 +66,5 @@ fn return_error_if_no_index() {
             index_error: index::Error::Database(_),
             path: _
         }
-    )
+    );
 }

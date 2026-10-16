@@ -12,8 +12,8 @@ fn fixture(name: &str) -> PathBuf {
         .join(name)
 }
 
-/// `full.docset`'s Info.plist has all four keys DocsetMeta reads:
-/// CFBundleIdentifier, CFBundleName, DocSetPlatformFamily, dashIndexFilePath.
+/// `full.docset`'s Info.plist has all four keys `DocsetMeta` reads:
+/// `CFBundleIdentifier`, `CFBundleName`, `DocSetPlatformFamily`, dashIndexFilePath.
 /// Parsing it should succeed, and every field on the result should match
 /// what's in the fixture file (open it and look).
 #[test]
@@ -28,7 +28,7 @@ fn parses_every_field_when_present() {
     assert_eq!(
         docset_meta.index_file,
         Some(std::path::PathBuf::from("fixture/index.html"))
-    )
+    );
 }
 
 /// `no_index_path.docset`'s Info.plist omits dashIndexFilePath, the one
@@ -44,10 +44,10 @@ fn missing_optional_field_becomes_none() {
     assert_eq!(docset_meta.name, "Fixture");
     assert_eq!(docset_meta.id, "fixture");
     assert_eq!(docset_meta.platform_family, "fixture");
-    assert_eq!(docset_meta.index_file, None)
+    assert_eq!(docset_meta.index_file, None);
 }
 
-/// `missing_name.docset`'s Info.plist omits CFBundleName, a required field.
+/// `missing_name.docset`'s Info.plist omits `CFBundleName`, a required field.
 /// Parsing should return an error identifying *which* field is missing
 #[test]
 fn missing_required_field_is_reported_by_name() {
@@ -55,7 +55,7 @@ fn missing_required_field_is_reported_by_name() {
     let meta = DocsetMeta::load(&fix);
 
     let error = meta.unwrap_err();
-    std::assert_matches!(error, Plist(e) if e.to_string().contains("CFBundleName"))
+    std::assert_matches!(error, Plist(e) if e.to_string().contains("CFBundleName"));
 }
 
 /// `malformed.docset`'s Info.plist is not well-formed XML. Parsing should
@@ -66,7 +66,7 @@ fn malformed_plist_is_a_plist_error() {
     let meta = DocsetMeta::load(&fix);
 
     let error = meta.unwrap_err();
-    std::assert_matches!(error, Plist(_))
+    std::assert_matches!(error, Plist(_));
 }
 
 /// `missing_plist.docset` has a Contents/ directory but no Info.plist file
@@ -77,5 +77,5 @@ fn missing_plist_file_is_an_io_error() {
     let meta = DocsetMeta::load(&fix);
 
     let error = meta.unwrap_err();
-    std::assert_matches!(error, Io(_))
+    std::assert_matches!(error, Io(_));
 }

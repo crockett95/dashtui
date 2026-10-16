@@ -4,8 +4,8 @@
 //!
 //! - **Index**: a docset's SQLite database of entries, whatever its layout.
 //!   This module means this.
-//! - **SearchIndex schema**: an index whose entries live in a single
-//!   `searchIndex` table. "SearchIndex" names the schema;
+//! - **`SearchIndex` schema**: an index whose entries live in a single
+//!   `searchIndex` table. "`SearchIndex`" names the schema;
 //!   `searchIndex`, in code formatting, names the table.
 //! - **Core Data schema**: an index stored as Apple Core Data tables (`ZTOKEN`,
 //!   `ZTOKENTYPE`, `ZFILEPATH`, ...), whose entries are assembled through joins.

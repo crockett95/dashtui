@@ -97,7 +97,7 @@ fn errors_on_empty_names() {
             id: 20,
             entry_error: entry::Error::EmptyName
         }
-    )
+    );
 }
 
 /// `core_data/empty_path.sql`: an empty `ZPATH` is a parse error that carries
@@ -112,7 +112,7 @@ fn errors_on_empty_paths() {
             id: 20,
             entry_error: entry::Error::EmptyPath
         }
-    )
+    );
 }
 
 /// `core_data/empty_table.sql`: all tables present but empty is an empty `Vec`,
@@ -121,7 +121,7 @@ fn errors_on_empty_paths() {
 fn an_empty_table_yields_an_empty_collection() {
     let (_dir, path) = CoreDataFixtureDb::EmptyTable.build();
     let entries = read_entries(&path).unwrap();
-    assert!(entries.is_empty())
+    assert!(entries.is_empty());
 }
 
 /// `core_data/missing_file.sql`: metadata pointing at a nonexistent `ZFILEPATH`
@@ -136,7 +136,7 @@ fn errors_if_missing_filepath() {
             id: 20,
             sqlite_error: _
         }
-    )
+    );
 }
 
 /// `core_data/missing_metainformation.sql`: a token with no metadata row
@@ -151,7 +151,7 @@ fn errors_if_missing_meta() {
             id: 20,
             sqlite_error: _
         }
-    )
+    );
 }
 
 /// `core_data/missing_tables.sql`: only `ZTOKEN` exists, so the schema is
@@ -161,7 +161,7 @@ fn errors_if_missing_meta() {
 fn errors_if_missing_tables() {
     let (_dir, path) = CoreDataFixtureDb::MissingTables.build();
     let error = read_entries(&path).unwrap_err();
-    std::assert_matches!(error, index::Error::Database(_))
+    std::assert_matches!(error, index::Error::Database(_));
 }
 
 /// `core_data/missing_type.sql`: a token pointing at a nonexistent `ZTOKENTYPE`
@@ -176,7 +176,7 @@ fn errors_if_missing_type() {
             id: 20,
             sqlite_error: _
         }
-    )
+    );
 }
 
 /// `core_data/null_anchor.sql`: two real CSS rows with a NULL `ZANCHOR` are

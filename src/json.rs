@@ -159,7 +159,7 @@ mod test {
         assert_eq!(
             json,
             r#"{"name":"name","type":"type","path":"path/to/docs","anchor":"anchor"}"#
-        )
+        );
     }
 
     #[test]
@@ -175,7 +175,7 @@ mod test {
         assert_eq!(
             json,
             r#"{"name":"name","type":"type","path":"path/to/docs","anchor":null}"#
-        )
+        );
     }
 
     #[test]
@@ -205,6 +205,6 @@ mod test {
         assert_eq!(
             json,
             r#"{"docset":{"path":"path/to/docset"},"query":"res","results":[{"name":"result1","type":"Function","path":"path/to/docs","anchor":null},{"name":"result2","type":"type","path":"path/to/other","anchor":"anchor"}]}"#
-        )
+        );
     }
 }

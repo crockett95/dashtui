@@ -48,7 +48,7 @@ impl SchemaType {
     /// uses.
     ///
     /// The query returns exactly one row with one column, `schema_type`: `0`
-    /// for neither schema, `1` for SearchIndex, `2` for Core Data. Convert it
+    /// for neither schema, `1` for `SearchIndex`, `2` for Core Data. Convert it
     /// with [`SchemaType::try_from`]. Detection only counts real tables, not
     /// views, and resolves names the way SQLite does (case-insensitively).
     /// If both schemas' tables exist, Core Data wins.
@@ -73,7 +73,7 @@ impl SchemaType {
     ///
     /// Returns the SQLite error if the query can't be prepared, for example
     /// because the tables this schema needs don't exist.
-    pub fn read_all<'a>(self, conn: &'a Connection) -> rusqlite::Result<Statement<'a>> {
+    pub fn read_all(self, conn: &Connection) -> rusqlite::Result<Statement<'_>> {
         match self {
             SchemaType::SearchIndex => conn.prepare(include_str!("read_search_index_all.sql")),
             SchemaType::CoreData => conn.prepare(include_str!("read_core_all.sql")),
@@ -142,7 +142,7 @@ mod test {
     fn detects_search_index_schema() {
         let result =
             detect_fixture_schema(fixture_db!("schema_detection/search_index.sql")).unwrap();
-        assert_eq!(result, SchemaType::SearchIndex)
+        assert_eq!(result, SchemaType::SearchIndex);
     }
 
     #[test]
@@ -150,13 +150,13 @@ mod test {
         let result =
             detect_fixture_schema(fixture_db!("schema_detection/search_index_uppercase.sql"))
                 .unwrap();
-        assert_eq!(result, SchemaType::SearchIndex)
+        assert_eq!(result, SchemaType::SearchIndex);
     }
 
     #[test]
     fn detects_core_data_schema() {
         let result = detect_fixture_schema(fixture_db!("schema_detection/core_data.sql")).unwrap();
-        assert_eq!(result, SchemaType::CoreData)
+        assert_eq!(result, SchemaType::CoreData);
     }
 
     #[test]
@@ -164,20 +164,20 @@ mod test {
         let result =
             detect_fixture_schema(fixture_db!("schema_detection/core_data_with_zeal_view.sql"))
                 .unwrap();
-        assert_eq!(result, SchemaType::CoreData)
+        assert_eq!(result, SchemaType::CoreData);
     }
 
     #[test]
     fn detects_core_data_schema_if_both_tables() {
         let result =
             detect_fixture_schema(fixture_db!("schema_detection/both_tables.sql")).unwrap();
-        assert_eq!(result, SchemaType::CoreData)
+        assert_eq!(result, SchemaType::CoreData);
     }
 
     #[test]
     fn detects_invalid_schema_for_empty_db() {
         let result = detect_fixture_schema(fixture_db!("schema_detection/empty.sql")).unwrap_err();
-        assert_eq!(result, Error::InvalidSchema)
+        assert_eq!(result, Error::InvalidSchema);
     }
 
     #[test]
@@ -185,14 +185,14 @@ mod test {
         let result =
             detect_fixture_schema(fixture_db!("schema_detection/search_index_view_only.sql"))
                 .unwrap_err();
-        assert_eq!(result, Error::InvalidSchema)
+        assert_eq!(result, Error::InvalidSchema);
     }
 
     #[test]
     fn detects_invalid_schema_for_unrelated_schema() {
         let result =
             detect_fixture_schema(fixture_db!("schema_detection/unrelated.sql")).unwrap_err();
-        assert_eq!(result, Error::InvalidSchema)
+        assert_eq!(result, Error::InvalidSchema);
     }
 
     /// Asserts that an entry-reading query follows ADR-8's shared-reader
@@ -220,7 +220,7 @@ mod test {
         let conn = fixture_conn(fixture_db!("search_index/no_search_index.sql"));
 
         let err = SchemaType::SearchIndex.read_all(&conn).unwrap_err();
-        std::assert_matches!(err, rusqlite::Error::SqliteFailure(_, _))
+        std::assert_matches!(err, rusqlite::Error::SqliteFailure(_, _));
     }
 
     #[test]
@@ -236,7 +236,7 @@ mod test {
         let conn = fixture_conn(fixture_db!("core_data/missing_tables.sql"));
 
         let err = SchemaType::CoreData.read_all(&conn).unwrap_err();
-        std::assert_matches!(err, rusqlite::Error::SqliteFailure(_, _))
+        std::assert_matches!(err, rusqlite::Error::SqliteFailure(_, _));
     }
 
     #[test]

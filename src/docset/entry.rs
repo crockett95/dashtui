@@ -72,7 +72,7 @@ pub struct Entry {
     /// markers and the `#anchor` removed.
     path: String,
     /// The anchor within the page, without the `#` that introduces it. Core
-    /// Data stores it separately (`ZANCHOR`); for SearchIndex it is
+    /// Data stores it separately (`ZANCHOR`); for `SearchIndex` it is
     /// everything after the first `#` in the recorded path, so `page.html##id`
     /// gives `#id`. `None` when the entry has no anchor.
     anchor: Option<String>,
@@ -101,22 +101,26 @@ pub enum Error {
 
 impl Entry {
     /// Returns this entry's normalized type
+    #[must_use]
     pub fn kind(&self) -> &EntryType {
         &self.kind
     }
 
     /// The entry's name
+    #[must_use]
     pub fn name(&self) -> &str {
         &self.name
     }
 
     /// The entry's page path, without markers or anchor.
+    #[must_use]
     pub fn path(&self) -> &str {
         &self.path
     }
 
     /// The anchor within the entry's page (see [`Entry::path`]), without the
     /// leading `#`; `None` if the entry points at the page itself.
+    #[must_use]
     pub fn anchor(&self) -> Option<&str> {
         self.anchor.as_deref()
     }
@@ -126,6 +130,7 @@ impl Entry {
     /// Builds a placeholder Entry fixture with a specified [`EntryType`] and
     /// name "name" and path "path" as hardcoded values
     #[cfg(test)]
+    #[must_use]
     pub fn fixture_with_kind(kind: EntryType) -> Self {
         Self {
             name: String::from("name"),
@@ -200,7 +205,7 @@ mod test {
         assert_eq!(entry.name, "foo");
         assert_eq!(entry.kind, EntryType::Function);
         assert_eq!(entry.path, "baz");
-        assert_eq!(entry.anchor.as_deref(), Some("quux"))
+        assert_eq!(entry.anchor.as_deref(), Some("quux"));
     }
 
     #[test]
@@ -401,7 +406,7 @@ mod test {
         assert_eq!(
             entry.path(),
             "developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Roles/structural_roles.html"
-        )
+        );
     }
 
     #[test]

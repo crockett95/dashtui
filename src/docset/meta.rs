@@ -25,6 +25,14 @@ pub enum DocsetMetaError {
 }
 
 impl DocsetMeta {
+    /// Load the metadata for a `Docset` from the plist
+    ///
+    /// # Errors
+    ///
+    /// [`DocsetMetaError`]
+    /// - [`DocsetMetaError::Io`] wraps any IO errors encountered while opening
+    ///   the file
+    /// - [`DocsetMetaError::Plist`] wraps any errors parsing the plist
     pub fn load(docset_dir: &Path) -> Result<Self, DocsetMetaError> {
         let plist_path = docset_dir.join("Contents/Info.plist");
         let file = File::open(plist_path)?;

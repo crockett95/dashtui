@@ -6,6 +6,7 @@ use crate::docset::entry::{Entry, EntryType};
 ///
 /// Given a slice of [`Entry`] objects, accumulates the counts of each type
 /// ([`Entry::kind`]) of entry in the collection, keyed and ordered by [`EntryType`].
+#[must_use]
 pub fn count_types(entries: &[Entry]) -> BTreeMap<EntryType, usize> {
     let mut counts = BTreeMap::new();
     for entry in entries {
