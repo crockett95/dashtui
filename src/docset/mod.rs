@@ -196,8 +196,7 @@ impl From<(PathBuf, Option<DocsetMeta>)> for Docset {
 ///
 /// Returns an error if `root` itself cannot be read (it doesn't exist, isn't
 /// a directory, or its contents can't be listed for another reason, e.g.
-/// permissions). Errors reading a *subdirectory* encountered during the walk
-/// are reported to stderr which is clunky but I don't know how to do better yet.
+/// permissions).
 pub fn find_docsets(root: &Path) -> io::Result<Vec<Docset>> {
     if !root.exists() {
         return Err(io::Error::new(
@@ -212,20 +211,52 @@ pub fn find_docsets(root: &Path) -> io::Result<Vec<Docset>> {
     }
     let mut results = Vec::new();
 
-    for child in root
-        .read_dir()
-        .unwrap_or_else(|_| panic!("Unable to read {}", root.display()))
-    {
-        match child {
-            Ok(child) if child.file_type().unwrap().is_dir() => {
-                if child.path().extension().is_some_and(|ext| ext == "docset") {
-                    results.push(Docset::load(child.path()));
-                } else {
-                    results.extend(find_docsets(&child.path())?);
+    let children = root.read_dir().map_err(|error| {
+        io::Error::new(
+            error.kind(),
+            format!("Could not read directory {}: {error}", root.display()),
+        )
+    })?;
+
+    for child in children {
+        let child = match child {
+            Ok(child) => child,
+            Err(e) => {
+                eprintln!("Failed to read item: {e}");
+                continue;
+            }
+        };
+
+        let filetype = match child.file_type() {
+            Ok(filetype) => filetype,
+            Err(e) => {
+                eprintln!(
+                    "Could not determine file type of {}: {e}",
+                    child.path().display(),
+                );
+                continue;
+            }
+        };
+
+        if !filetype.is_dir() {
+            continue;
+        }
+
+        let path = child.path();
+
+        if path.extension().is_some_and(|ext| ext == "docset") {
+            results.push(Docset::load(path));
+        } else {
+            match find_docsets(&path) {
+                Ok(result) => results.extend(result),
+                Err(e) => {
+                    eprintln!(
+                        "Could not read contents of directory {}: {e}",
+                        path.display()
+                    );
+                    continue;
                 }
             }
-            Err(err) => eprintln!("Error: {}", err),
-            _ => (),
         }
     }
     Ok(results)

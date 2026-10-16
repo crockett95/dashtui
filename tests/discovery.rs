@@ -56,3 +56,66 @@ fn errors_on_missing_directory() {
     let root = fixture("does_not_exist");
     assert!(find_docsets(&root).is_err());
 }
+
+#[cfg(unix)]
+mod permissions {
+    use super::*;
+    use std::{
+        fs::{Permissions, create_dir},
+        os::unix::fs::PermissionsExt,
+    };
+
+    struct Unlock(PathBuf);
+
+    impl Drop for Unlock {
+        fn drop(&mut self) {
+            let _ = std::fs::set_permissions(&self.0, Permissions::from_mode(0o755));
+        }
+    }
+
+    #[test]
+    fn skips_directory_with_no_permissions() {
+        use is_root::is_root;
+        use tempfile::tempdir;
+
+        assert!(!is_root(), "Test cannot be run by root user");
+
+        let temproot = tempdir().unwrap();
+        let unreachable = temproot.path().join("unreachable");
+        let docset = temproot.path().join("Fixture.docset");
+
+        create_dir(&unreachable).unwrap();
+        std::fs::set_permissions(&unreachable, Permissions::from_mode(0o000)).unwrap();
+        let _unlock = Unlock(unreachable);
+
+        create_dir(&docset).unwrap();
+
+        let results: Vec<PathBuf> = find_docsets(temproot.path())
+            .unwrap()
+            .into_iter()
+            .map(|a| a.path().to_path_buf())
+            .collect();
+
+        let expected = vec![docset];
+
+        assert_eq!(results, expected);
+    }
+
+    #[test]
+    fn errors_if_no_permissions_to_search_root() {
+        use std::io::ErrorKind::PermissionDenied;
+
+        use is_root::is_root;
+        use tempfile::tempdir;
+
+        assert!(!is_root(), "Test cannot be run by root user");
+
+        let temproot = tempdir().unwrap();
+
+        std::fs::set_permissions(temproot.path(), Permissions::from_mode(0o000)).unwrap();
+        let _unlock = Unlock(temproot.path().to_path_buf());
+
+        let error = find_docsets(temproot.path()).unwrap_err();
+        assert_eq!(error.kind(), PermissionDenied)
+    }
+}
